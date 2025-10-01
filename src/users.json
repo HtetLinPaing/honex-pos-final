@@ -1,0 +1,44 @@
+{
+  "users": {
+    "shop1": {
+      "username": "shop1",
+      "password": "shop1",
+      "role": "admin",
+      "shortName": "GMP",
+      "shopName": "SanYiekNyine Gmone Pwint",
+      "phone": "09775070807"
+    },
+    "shop2": {
+      "username": "shop2",
+      "password": "shop2",
+      "role": "admin",
+      "shortName": "JS",
+      "shopName": "Junction Square",
+      "phone": "09775070808"
+    },
+    "shop3": {
+      "username": "shop3",
+      "password": "shop3",
+      "role": "admin",
+      "shortName": "MT",
+      "shopName": "Junction Maw Tin",
+      "phone": "09775070809"
+    },
+    "shop4": {
+      "username": "shop4",
+      "password": "shop4",
+      "role": "admin",
+      "shortName": "JC",
+      "shopName": "Junction City",
+      "phone": "09775070802"
+    },
+    "shop5": {
+      "username": "shop5",
+      "password": "shop5",
+      "role": "admin",
+      "shortName": "MDY",
+      "shopName": "Mandalay Ocean Mingalar MDY",
+      "phone": "09775070802"
+    }
+  }
+}

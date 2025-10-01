@@ -1,0 +1,49 @@
+/* ✅ Main content area bigger */
+.main-content {
+  max-width: 1400px;  /* အဆင်ပြေသလောက် ကြီး */
+  margin: auto;
+  padding: 20px;
+   box-shadow: 0 2px 8px rgba(28, 28, 28, 0.162);
+}
+
+/* ✅ Table general style */
+.sale-return-history table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.sale-return-history th,
+.sale-return-history td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* ✅ Note column wider & taller */
+.sale-return-history td:last-child {
+  min-width: 220px;   /* ✅ Width ကြီး */
+  font-size: 14px;
+  line-height: 1.5;   /* row height */
+  white-space: pre-wrap; /* wrap notes */
+}
+
+.sale-return-history th:last-child {
+  min-width: 220px;
+}
+
+/* ✅ Filters */
+.sale-return-history .filters {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.sale-return-history .filters input {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}

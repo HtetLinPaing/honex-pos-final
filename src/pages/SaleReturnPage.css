@@ -1,0 +1,103 @@
+.sale-return {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  max-width: 1200px;
+  margin: auto;
+  font-family: Arial, sans-serif;
+}
+
+.sale-return h2 {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.sale-return h3 {
+  font-size: 18px;
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+.sale-return table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.sale-return th,
+.sale-return td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* --- Default Input Style --- */
+.sale-return input,
+.sale-return select {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 5px;
+  font-size: 13px;
+}
+
+/* --- Barcode box ကြီး --- */
+.sale-return td input.barcode {
+  min-width: 220px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* --- အခြား fields သေး --- */
+.sale-return td input.small,
+.sale-return td select.small {
+  min-width: 70px;
+  max-width: 90px;
+  font-size: 13px;
+  padding: 4px;
+}
+
+/* Add button */
+.sale-return .add-btn {
+  background: #16a34a;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.sale-return .summary {
+  margin-top: 20px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.sale-return button[type="submit"],
+.sale-return > button {
+  background: #2563eb;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  margin-top: 12px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* Chrome, Safari, Edge, Opera */
+.sale-return input[type=number]::-webkit-outer-spin-button,
+.sale-return input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.sale-return input[type=number] {
+  -moz-appearance: textfield;
+}

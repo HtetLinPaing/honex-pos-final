@@ -1,0 +1,1417 @@
+
+
+/* ========== RECEIPT PREVIEW (Right panel) ========== */
+/* ===========================
+   Excel-like Table Style
+   =========================== */
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  background-color: white;
+}
+
+.inventory-table th,
+.inventory-table td {
+  border: 1px solid #d0d7de;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.inventory-table th {
+  background-color: #f3f6f9;
+  font-weight: 600;
+  color: #222;
+}
+
+.inventory-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.inventory-table tbody tr:hover {
+  background-color: #fff3cd; /* light yellow */
+  transition: 0.2s;
+}
+
+/* Qty + Price styling */
+.inventory-table td.qty-zero {
+  color: #999;
+}
+
+.inventory-table td.qty-positive {
+  font-weight: bold;
+  color: #1b5e20;
+}
+
+.inventory-table td.price {
+  text-align: right;
+  font-weight: 500;
+  color: #0d47a1;
+}
+
+/* Table container for scroll + shadow */
+.table-container {
+  overflow-x: auto;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+/* dailysale css */
+
+.report-container {
+  overflow-x: auto;   /* 📱 မိုဘိုင်းထဲမှာ 横scroll ချနိုင် */
+}
+
+
+.report-container h2 {
+  margin-bottom: 15px;
+  font-size: 22px;
+  font-weight: bold;
+  color: #333;
+}
+
+.report-table {
+  width: 100%;
+  min-width: 1000px;
+  border-spacing: 0;       /* border-collapse လိုမသုံးတော့ */
+  border-collapse: separate;
+}
+
+.report-table thead {
+  background: #3f51b5;
+  color: white;
+}
+
+.report-table th,
+.report-table td {
+  padding: 10px 8px;      /* စာကြား space ကိုညှိ */
+  text-align: center;
+  white-space: nowrap;    /* စာအတန်းမကျ */
+  overflow: hidden;
+  text-overflow: ellipsis; /* စာပိုရင် … */
+}
+
+.report-table th {
+  font-size: 13px;
+}
+
+.report-table td {
+  font-size: 13px;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.report-table tbody tr:hover {
+  background: #fff3cd; /* soft yellow */
+}
+
+.report-table tfoot {
+  background: #f1f1f1;
+}
+
+.report-table tfoot td {
+  font-size: 15px;
+  font-weight: bold;
+  padding: 12px;
+  text-align: right;
+  color: #222;
+}
+.nav-box {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;                /* screen အပြည့် */
+  padding: 16px;
+  background: #f3f4f6;
+  border-top: 1px solid #d1d5db;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  box-shadow: 0 -4px 8px rgba(0,0,0,0.1); /* အပေါ်ထဲမှ shadow */
+  z-index: 1000;              /* အပေါ်ဆုံးထိ ပေါ်နေမယ် */
+}
+
+.menu-link {
+  background: #111827;
+  color: white;
+  padding: 14px 24px;         /* ကြီးကြီးထူထူ */
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.menu-link:hover {
+  background: #2563eb;
+  transform: scale(1.08);
+}
+
+
+/* ========== RESET ========== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
+  background: #f8fafc;
+  color: #111827;
+  line-height: 1.5;
+}
+
+/* ========== CONTAINER & GRID ========== */
+.container {
+  max-width: 1280px;
+  margin: 28px auto;
+  padding: 20px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* ========== CARD ========== */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.05);
+  transition: transform 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* ========== HEADER ========== */
+.header {
+  text-align: center;
+}
+.header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.header p {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ========== BARCODE ROW ========== */
+.barcode-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.barcode-row input {
+  flex: 1;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.barcode-row button {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.barcode-row button:hover {
+  background: #1d4ed8;
+}
+
+/* ========== MEMBER ROW ========== */
+.member-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.input-with-btn {
+  display: flex;
+  flex: 1;
+}
+.input-with-btn input {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 8px 0 0 8px;
+  padding: 10px;
+  font-size: 14px;
+}
+.input-with-btn button {
+  border: none;
+  border-radius: 0 8px 8px 0;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+}
+.btn-send { background: #3b82f6; }
+.btn-send:hover { background: #2563eb; }
+.btn-verify { background: #10b981; }
+.btn-verify:hover { background: #059669; }
+
+/* ========== POS TABLE ========== */
+.pos-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pos-table th {
+  background: #1e293b;
+  color: #fff;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+.pos-table td {
+  padding: 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.pos-table tr:hover td {
+  background: #f9fafb;
+}
+.pos-table input, .pos-table select {
+  padding: 6px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+/* ========== SUMMARY ========== */
+.summary {
+  margin-top: 18px;
+  background: #e0f2fe;
+  border-radius: 10px;
+  padding: 16px;
+}
+.summary p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #334155;
+}
+.summary b { font-size: 16px; color: #111827; }
+
+/* ========== PRINT BUTTON ========== */
+.print {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 26px;
+  margin: 16px auto 0;
+  display: block;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.print:hover {
+  background: #1d4ed8;
+  transform: scale(1.05);
+}
+
+/* ========== MENU (Bottom nav) ========== */
+.menu {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.menu a {
+  text-decoration: none;
+  background: #111827;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.menu a:hover {
+  background: #2563eb;
+}
+
+/* ========== RECEIPT PREVIEW ========== */
+.receipt {
+  font-size: 13px;
+}
+.receipt .logo {
+  margin-bottom: 8px;
+}
+.receipt table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.receipt th {
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 6px;
+  text-align: left;
+}
+.receipt td {
+  padding: 6px;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.receipt tfoot td {
+  font-weight: 600;
+}
+.receipt .totals {
+  margin-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 8px;
+}
+.receipt .totals div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.receipt .totals div:last-child {
+  font-weight: 700;
+  font-size: 14px;
+}
+.receipt .thanks {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Print Preview Panel */
+.receipt {
+  padding: 20px 24px;          /* အနည်းငယ်ချဲ့ */
+  line-height: 1.6;
+  font-size: 14px;
+  border-radius: 12px;
+  background: #fff;
+
+  /* Shadow ထပ်ထည့် */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+              0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.receipt table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.receipt th,
+.receipt td {
+  padding: 8px 6px;            /* အပေါ်အောက် spacing ပိုကောင်း */
+}
+
+.receipt th {
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+}
+
+.receipt td {
+  border-bottom: 1px dashed #eee;
+}
+
+.receipt .summary {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.receipt .summary div {
+  margin: 6px 0;
+}
+
+.receipt .thankyou {
+  text-align: center;
+  margin-top: 18px;            /* အပေါ်အောက် ခြားပေး */
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+
+/* Print Preview Box */
+.print-preview {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+  min-height: 600px;   /* အနည်းဆုံး အလျား */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.print-preview h3 {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;
+}
+
+.print-preview p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #444;
+}
+/* Right side print preview card */
+.print-preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 700px;         /* လိုချင်သလောက် ရှည်ချိန် */
+}
+
+.print-preview .receipt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+
+/* index.css ထဲထည့်ပါ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-box {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  width: 400px;
+  animation: fadeIn 0.25s ease;
+}
+
+.modal-box h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+.modal-box label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.modal-box input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  transition: border 0.2s;
+}
+
+.modal-box input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-actions .cancel-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-actions .cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+.modal-actions .save-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.modal-actions .save-btn:hover {
+  background: #1e40af;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/*noti ui*/
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ================================
+   Toast Notifications
+================================ */
+/* Toast Container */
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Toast Base Style */
+.toast {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;              /* default text = white */
+  min-width: 180px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Type Colors */
+.toast.info {
+  background-color: #2563eb;   /* Blue */
+}
+
+.toast.success {
+  background-color: #16a34a;   /* Green */
+}
+
+.toast.error {
+  background-color: #dc2626;   /* Red */
+}
+
+.toast.warning {
+  background-color: #f59e0b;   /* Amber/Orange */
+  color: #000;                 /* Warning → Black text */
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+/* ===== Menu Bar (Bottom Buttons) ===== */
+.menu-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f9fafb;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+}
+
+.menu-bar .menu {
+  background: #111827; /* dark navy */
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.menu-bar .menu:hover {
+  background: #1f2937;
+  transform: translateY(-2px);
+}
+
+
+/* Shop transfer Ui*/
+/* ✅ Tab buttons for In/Out */
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  background: #e5e7eb; /* gray-200 */
+  color: #374151;      /* gray-700 */
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.tab-btn:hover {
+  background: #d1d5db; /* gray-300 */
+}
+
+.tab-btn.active {
+  background: #2563eb; /* blue-600 */
+  color: white;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+.transfer-wrapper {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  font-family: Arial, sans-serif;
+}
+
+.top-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.select-box {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.btn-noti, .btn-history {
+  background: #f3f4f6;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-left: 6px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+}
+
+.btn-noti:hover, .btn-history:hover {
+  background: #e5e7eb;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.input-row input, 
+.input-row select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.btn-submit {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-submit:hover {
+  background: #1d4ed8;
+}
+
+.transfer-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.transfer-table th,
+.transfer-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.transfer-table th {
+  background: #f9fafb;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+.total-row {
+  margin-top: 12px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.btn-transfer {
+  margin-top: 16px;
+  width: 100%;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-transfer:hover {
+  background: #15803d;
+}
+
+.bottom-menu {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.menu-btn {
+  background: #f3f4f6;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #333;
+}
+
+.menu-btn:hover {
+  background: #e5e7eb;
+}
+
+/*History shop transfer*/
+
+/* ===== Filter Bar ===== */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.filter-bar select,
+.filter-bar input {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* ===== Table ===== */
+.transfer-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.transfer-table th,
+.transfer-table td {
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  text-align: center;
+  font-size: 14px;
+}
+.transfer-table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+.transfer-table tr:nth-child(even) {
+  background: #fafafa;
+}
+.transfer-table tr:hover {
+  background: #f3f4f6;
+  transition: background 0.2s ease-in-out;
+}
+
+/* ===== Status Badges ===== */
+.badge {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+.badge-yellow    { background: #fef3c7; color: #b45309; }
+.badge-green     { background: #d1fae5; color: #065f46; }
+.badge-red       { background: #fee2e2; color: #991b1b; }
+.badge-blue      { background: #e0f2fe; color: #1e40af; }
+.badge-gray      { background: #e5e7eb; color: #374151; }
+.badge-cancelled { background: #f3f4f6; color: #6b7280; }
+
+/* ===== Buttons ===== */
+.btn-accept,
+.btn-deny,
+.btn-cancel,
+.btn-edit,
+.btn-save {
+  border: none;
+  padding: 4px 10px;
+  margin: 0 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease-in-out;
+}
+.btn-accept { background: #16a34a; color: white; }
+.btn-deny   { background: #ef4444; color: white; }
+.btn-cancel { background: #6b7280; color: white; }
+.btn-edit   { background: #3b82f6; color: white; }
+.btn-save   { background: #16a34a; color: white; padding: 6px 12px; }
+.btn-accept:hover { background: #15803d; }
+.btn-deny:hover   { background: #dc2626; }
+.btn-cancel:hover { background: #4b5563; }
+.btn-edit:hover   { background: #2563eb; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000;
+}
+.modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  width: 420px;
+  max-width: 95%;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.modal h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 700;
+}
+.input-row { margin-bottom: 12px; }
+.input-row input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== Wrapper ===== */
+.transfer-wrapper {
+  padding: 16px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* ===============================
+   🔔 Notification Badge in Navbar
+   =============================== */
+
+
+/* Red circle with number (e.g. 3) */
+.noti-dot {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  font-size: 12px;
+  text-align: center;
+  border-radius: 999px;
+  background: #ef4444; /* red */
+  color: white;
+  padding: 0 6px;
+  font-weight: bold;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+  margin-left: 6px;
+}
+
+/* Tiny badge (dot only, no number) */
+.noti-dot-small {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Fix spacing for menu links */
+.menu-link {
+  position: relative;
+  padding-right: 8px;
+}
+.bottom-menu .menu-link {
+  padding: 8px 10px;
+}
+
+/* ===============================
+   📋 Notifications Page Styles
+   =============================== */
+.noti-wrapper {
+  max-width: 800px;
+  margin: 20px auto;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.noti-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noti-voucher {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.noti-meta {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.noti-status {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 4px 0;
+}
+.noti-status.pending {
+  color: #d97706; /* amber */
+}
+.noti-status.accepted {
+  color: #059669; /* green */
+}
+.noti-status.denied {
+  color: #dc2626; /* red */
+}
+.noti-status.cancelled {
+  color: #6b7280; /* gray */
+}
+
+.noti-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+.noti-table th,
+.noti-table td {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: center;
+  font-size: 14px;
+}
+.noti-table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.noti-footer {
+  text-align: right;
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+/* ===============================
+   ✨ Hover Effect for Noti Cards
+   =============================== */
+.noti-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+.noti-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/*mainlayout*/
+
+/* Main Navbar */
+.main-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 50px;
+  padding: 10px 10px;
+  background-color: #3266b0; /* Dark gray bg */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.main-nav a {
+  color: #f9fafb;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.main-nav a:hover {
+  background-color: #374151; /* Hover darker */
+  color: #ffffff;
+}
+
+.main-nav .active {
+  background-color: #2563eb; /* Blue highlight */
+  color: white;
+}
+
+
+/* Noti menu item wrapper */
+.main-nav .noti-badge {
+  display: flex;
+  align-items: center;
+  gap: 30px;          /* bell နဲ့ text ကြားအနည်းငယ် */
+  position: relative;
+}
+
+/* Red circle badge (align center with bell) */
+.main-nav .noti-dot {
+  position: absolute;
+  top: -6px;         /* icon ပေါ်အနည်းငယ် */
+  right: -10px;      /* ဘယ်ထောင့်ကပ် */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 18px;
+  height: 18px;
+  line-height: 1;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 50%;
+  background: #ef4444;
+  color: white;
+  padding: 0 4px;
+  box-shadow: 0 0 0 2px #1f2937; /* navbar bg color → outline အညီ */
+}
+
+#recaptcha-container {
+  display: none !important;
+}
+
+
+.coupon-container {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.coupon-container input {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.coupon-container input:focus {
+  border-color: #007bff;
+}
+
+
+/*sale report end start css/*
+/* --- Modern Neat Date Filter --- */
+.date-filter {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.date-filter label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b; /* slate-800 */
+  margin-bottom: 6px;
+}
+
+.date-filter input[type="date"] {
+  height: 40px;
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0; /* gray-200 */
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.date-filter input[type="date"]:hover {
+  border-color: #cbd5e1; /* gray-300 */
+}
+
+.date-filter input[type="date"]:focus {
+  border-color: #3b82f6; /* blue-500 */
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+
+/* save and print  */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-box {
+  background: #fff;
+  padding: 20px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ========================= */
+/*   Notification Full View  */
+/* ========================= */
+
+.noti-wrapper {
+  font-family: Arial, sans-serif;
+}
+
+.noti-card {
+  transition: all 0.2s ease-in-out;
+}
+.noti-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ========================= */
+/*   Notification Full View  */
+/* ========================= */
+
+/* ========================= */
+/*   Notification List View  */
+/* ========================= */
+.noti-wrapper {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.noti-card {
+  transition: all 0.2s ease-in-out;
+  background: #fff;
+}
+.noti-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ========================= */
+/*   Fullscreen Detail View  */
+/* ========================= */
+.fullscreen-detail {
+  position: fixed;
+  inset: 0;
+  background: #aad3fc; /* soft gray */
+  z-index: 9999;
+  padding: 2rem 3rem;
+  overflow-y: auto;
+}
+
+/* Title */
+.fullscreen-detail h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+
+/* Meta info */
+.fullscreen-detail p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+.fullscreen-detail p b {
+  color: #111827;
+}
+
+/* Table */
+.fullscreen-detail table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.2rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+.fullscreen-detail th,
+.fullscreen-detail td {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+.fullscreen-detail th {
+  background: #f3f4f6;
+  text-align: left;
+  color: #374151;
+  font-weight: 600;
+}
+.fullscreen-detail td {
+  border-top: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+/* Hover + Selected row effect */
+.fullscreen-detail tbody tr:hover td {
+  background: #f9fafb;
+}
+.fullscreen-detail tbody tr.selected td {
+  background: #d1fae5; /* soft green */
+  color: #065f46;
+  font-weight: 600;
+}
+
+/* Buttons */
+.fullscreen-detail .btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  transition: background 0.2s ease-in-out, transform 0.15s;
+}
+.fullscreen-detail .btn:hover {
+  transform: translateY(-1px);
+}
+.fullscreen-detail .btn-back {
+  background: #e5e7eb;
+  color: #111827;
+}
+.fullscreen-detail .btn-back:hover {
+  background: #d1d5db;
+}
+.fullscreen-detail .btn-export {
+  background: #16a34a;
+  color: #fff;
+}
+.fullscreen-detail .btn-export:hover {
+  background: #15803d;
+}
+.voucher-info-box {
+  background: #ffffff;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.2rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.voucher-info-box h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+
+.voucher-info-box p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.voucher-info-box p b {
+  color: #111827;
+}
+
+
