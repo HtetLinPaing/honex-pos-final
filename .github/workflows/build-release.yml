@@ -22,12 +22,11 @@ jobs:
         run: npm install
 
       - name: Build Electron App
-        run: npm run dist
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MY_GH_TOKEN }}
+        run: npm run dist
 
       - name: Publish to GitHub Releases
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npx electron-builder --publish always
+          GH_TOKEN: ${{ secrets.MY_GH_TOKEN }}
+        run: npx electron-builder --publish always
