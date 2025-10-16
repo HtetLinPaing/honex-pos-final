@@ -1,6 +1,6 @@
 {
   "name": "pos-system",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "main": "electron.js",
   "author": "HtetLinPaing",
@@ -26,10 +26,7 @@
       "package.json"
     ],
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
+      "target": ["nsis"],
       "icon": "public/icon.ico"
     },
     "nsis": {
