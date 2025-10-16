@@ -30,3 +30,7 @@ release/
 
 # Vercel
 .vercel
+
+# Ignore build outputs
+release/
+dist/
