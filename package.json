@@ -1,9 +1,9 @@
 {
   "name": "pos-system",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "main": "electron.js",
-  "author": "Htet",
+  "author": "HtetLinPaing",
   "scripts": {
     "dev": "vite",
     "start": "electron .",
@@ -18,7 +18,7 @@
     "appId": "com.honex.pos",
     "productName": "POS System",
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "files": [
       "dist/**/*",
@@ -32,10 +32,17 @@
       ],
       "icon": "public/icon.ico"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
     "publish": [
       {
-        "provider": "generic",
-        "url": "https://pos.honexpos.site/"
+        "provider": "github",
+        "owner": "HtetLinPaing",
+        "repo": "honex-pos-final"
       }
     ]
   },
