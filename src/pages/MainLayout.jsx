@@ -166,7 +166,7 @@ export default function MainLayout() {
         }}
       >
         <marquee behavior="scroll" direction="left" scrollamount="6">
-          🎉 Promo: 1.2.2025 to 1.3.2025 — Buy 1 Get 20% OFF all items 🎉
+          Testing Testing
         </marquee>
       </footer>
     </div>
