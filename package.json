@@ -1,6 +1,7 @@
 {
   "name": "pos-system",
   "version": "1.0.5",
+  "description": "Honex POS System built with Electron and React",
   "private": true,
   "main": "electron.js",
   "author": "HtetLinPaing",
