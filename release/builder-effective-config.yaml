@@ -1,0 +1,24 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.honex.pos
+productName: POS System
+files:
+  - filter:
+      - dist/**/*
+      - electron.js
+      - package.json
+win:
+  target:
+    - nsis
+  icon: public/icon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+publish:
+  - provider: github
+    owner: HtetLinPaing
+    repo: honex-pos-final
+electronVersion: 30.5.1
