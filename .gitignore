@@ -34,3 +34,5 @@ release/
 # Ignore build outputs
 release/
 dist/
+"release/" 
+"dist/" 
