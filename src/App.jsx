@@ -1,23 +1,27 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'; // Fixing imports
-import { Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { ref, set, push } from 'firebase/database';
-import { db } from './firebase';
-import localforage from 'localforage';
+import React, { useEffect, useRef, useState } from "react";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom"; // Fixing imports
+import { Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { ref, set, push } from "firebase/database";
+import { db } from "./firebase";
+import localforage from "localforage";
 
-import { useShop } from './context/ShopContext';
-import { useToast } from './context/ToastContext';
-import MainLayout from './pages/MainLayout';
-import LoginPage from './pages/LoginPage';
-import DailySaleReport from './pages/DailySaleReport';
-import InventoryPage from './pages/InventoryPage';
-import ShopTransferPage from './pages/ShopTransferPage';
-import ShopTransferNoti from './pages/ShopTransferNoti';
-import ShopTransferHistory from './pages/ShopTransferHistory';
-import LowStockPage from './pages/LowStockPage';
-import SaleReturnPage from './pages/SaleReturnPage';
-import SaleReturnHistory from './pages/SaleReturnHistory';
+import PurchasePage from "./pages/PurchasePage";
+import { useShop } from "./context/ShopContext";
+import { useToast } from "./context/ToastContext";
+import MainLayout from "./pages/MainLayout";
+import LoginPage from "./pages/LoginPage";
+import DailySaleReport from "./pages/DailySaleReport";
+import InventoryPage from "./pages/InventoryPage";
+import ShopTransferPage from "./pages/ShopTransferPage";
+import ShopTransferNoti from "./pages/ShopTransferNoti";
+import ShopTransferHistory from "./pages/ShopTransferHistory";
+import LowStockPage from "./pages/LowStockPage";
+import SaleReturnPage from "./pages/SaleReturnPage";
+import SaleReturnHistory from "./pages/SaleReturnHistory";
+const BASE_URL = "https://honexpos-2025-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+
 
 import {
   getNextVoucherNo,
@@ -27,7 +31,7 @@ import {
   saveProductsToDB,
   syncProductsFromFirebase,
   syncSalesFromFirebase,
-} from './localdb';
+} from "./localdb";
 import { checkMemberExists, sendOTP, verifyOTP } from "./memberBackup";
 
 import "./index.css";
@@ -37,22 +41,33 @@ function POSAppInner() {
   const { addToast } = useToast();
   const inputRef = useRef(null);
   const scanTimeout = useRef(null);
+  // 🏪 ➕ ADD ADDRESS STATE
+  const [shopAddress, setShopAddress] = useState("");
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
 
   if (!currentShop) return <Navigate to="/login" replace />;
 
-
-  // 🔽 Helper function for logo
+  // 🔽 Helper function for log
   const getShopLogo = (shopId) => {
-    const hangtenShops = ["shop1", "shop2", "shop3", "shop4", "shop5", "shop6", "shop7"];
-    const prettyfitShops = ["shop8", "shop9", "shop10", "shop11"];
+    const hangtenShops = [
+      "shop1",
+      "shop2",
+      "shop3",
+      "shop4",
+      "shop5",
+      "STHT",
+      "DNGHT",
+      "OSHT",
+    ];
+    const prettyfitShops = ["STPF", "shop9", "shop10", "DNGPF", "OSPF"];
 
     if (hangtenShops.includes(shopId)) {
-      return "/logo.png"; // hangten
+      return "./logo.png"; // ✅ relative path
     }
     if (prettyfitShops.includes(shopId)) {
-      return "/prettyfit-logo.png"; // prettyfit
+      return "./prettyfit-logo.png"; // ✅ relative path
     }
-    return "/logo.png"; // fallback hangten
+    return "./logo.png"; // fallback
   };
 
   // STATES
@@ -62,6 +77,7 @@ function POSAppInner() {
   const [couponCode, setCouponCode] = useState("");
   const [couponAmount, setCouponAmount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const BASE_URL = "https://realtime.honexpos.site";
 
   useEffect(() => {
     // Save items to localforage whenever `items` changes
@@ -92,6 +108,10 @@ function POSAppInner() {
   const [memberExists, setMemberExists] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
 
+  if (!currentShop) {
+    return <Navigate to="/login" replace />;
+  }
+
   const total = items.reduce((s, i) => s + i.qty * i.price, 0);
   const discount = items.reduce((s, i) => {
     const base = i.qty * i.price;
@@ -110,18 +130,16 @@ function POSAppInner() {
   const appliedCoupon = Math.min(couponAmount, couponApplicableTotal);
   const finalTotal = afterDiscount - memberDiscount - appliedCoupon;
 
-
   // Convert current date to dd/MM/yyyy format
-  const formattedDate = new Date().toLocaleDateString('en-GB');  // dd/MM/yyyy format
-  const formattedTime = new Date().toLocaleTimeString('en-GB', { hour12: false });  // HH:mm:ss format
-  const formattedDateTime = `${formattedDate} ${formattedTime}`;  // Combine date and time
+  const formattedDate = new Date().toLocaleDateString("en-GB"); // dd/MM/yyyy format
+  const formattedTime = new Date().toLocaleTimeString("en-GB", {
+    hour12: false,
+  }); // HH:mm:ss format
+  const formattedDateTime = `${formattedDate} ${formattedTime}`; // Combine date and time
 
-
-  // Use the formattedDateTime to send with the request
-  console.log(formattedDateTime); // Will show dd/MM/yyyy HH:mm:ss
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'F4') {
+      if (e.key === "F4") {
         e.preventDefault(); // F4 key ကို မသုံးနိုင်အောင်ဆဲ
 
         if (items.length === 0) {
@@ -132,7 +150,7 @@ function POSAppInner() {
         setShowDialog(true); // Open payment dialog box on F4 press
       }
 
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         if (e.repeat) return; // Prevent Enter key from repeating
 
         // Only proceed if the payment dialog is open
@@ -149,63 +167,87 @@ function POSAppInner() {
     };
 
     // Add event listener for keydown
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     // Cleanup event listener on component unmount
     return () => {
-      window.removeEventListener('keydown', handleKeyDown); // Clean up event listener
+      window.removeEventListener("keydown", handleKeyDown); // Clean up event listener
     };
   }, [items, showDialog, submitting]); // Depend on items, dialog and submitting states
 
-
   // ===================== SYNC =====================
+
   useEffect(() => {
     if (!currentShop?.username) return;
 
-    const offlineHandler = () => addToast("⚠ Offline, using local DB", "warning");
+    const offlineHandler = () =>
+      addToast("⚠ Offline, using local DB", "warning");
 
     const doSync = async () => {
-      if (!navigator.onLine) return;
+      if (!navigator.onLine) return; // Skip sync if offline
       try {
         const previewNo = await previewVoucherNo(currentShop.username);
         setVoucherNo(previewNo);
 
-        const productSync = await syncProductsFromFirebase(currentShop.username);
+        // Sync products from Firebase
+        const productSync = await syncProductsFromFirebase(
+          currentShop.username
+        );
         if (productSync.success) addToast(productSync.message, "success");
 
+        // Sync Sales
         const salesKey = `${currentShop.username}_sales`;
         const localSales = (await localforage.getItem(salesKey)) || [];
-        for (const sale of localSales) {
-          const saleRef = push(ref(db, `shops/${currentShop.username}/sales`));
-          await set(saleRef, sale);
-        }
-        await localforage.setItem(salesKey, localSales);
-        addToast("✅ Local sales synced to Firebase", "success");
 
+        // Flag to prevent multiple syncs
+        const syncedSalesKey = `${currentShop.username}_sales_synced`;
+        const isSynced = await localforage.getItem(syncedSalesKey);
+
+        if (!isSynced) {
+          // Only sync local sales if not already synced
+          for (const sale of localSales) {
+            const saleRef = push(
+              ref(db, `shops/${currentShop.username}/sales`)
+            );
+            await set(saleRef, sale);
+          }
+          await localforage.setItem(syncedSalesKey, true); // Mark as synced
+          addToast("✅ Local sales synced to Firebase", "success");
+        }
+
+        // Ensure local sales are saved back
+        await localforage.setItem(salesKey, localSales);
+
+        // Sync Returns
         const returnKey = `${currentShop.username}_returns`;
         const localReturns = (await localforage.getItem(returnKey)) || [];
         for (const ret of localReturns) {
-          const returnRef = push(ref(db, `shops/${currentShop.username}/returns`));
+          const returnRef = push(
+            ref(db, `shops/${currentShop.username}/returns`)
+          );
           await set(returnRef, ret);
         }
         await localforage.setItem(returnKey, localReturns);
         addToast("✅ Local returns synced to Firebase", "success");
       } catch (err) {
-        addToast("❌ Sync error: " + (err.message || err), "error");
+        // Handle errors without showing toast
+        console.error("Sync error:", err);
+        // Optionally log errors somewhere (e.g., to an external service)
       }
     };
 
-    if (navigator.onLine) doSync();
+    if (navigator.onLine) doSync(); // Trigger sync on initial load if online
 
+    // Event listeners for online/offline changes
     window.addEventListener("online", doSync);
     window.addEventListener("offline", offlineHandler);
 
+    // Cleanup event listeners on unmount
     return () => {
       window.removeEventListener("online", doSync);
       window.removeEventListener("offline", offlineHandler);
     };
   }, [currentShop]);
-
 
   // ===================== BARCODE =====================
   const handleBarcodeChange = (val) => {
@@ -214,120 +256,148 @@ function POSAppInner() {
     scanTimeout.current = setTimeout(() => handleScan(val), 250);
   };
 
- const handleScan = async (rawCode) => {
-  if (!rawCode) return;
-  const input = rawCode.trim();
-  const products = await getProductsFromDB(currentShop.username);
+  const handleScan = async (rawCode) => {
+    if (!rawCode) return;
+    const input = rawCode.trim();
+    const products = await getProductsFromDB(currentShop.username);
 
-  let code = "";
-  let color = "";
-  let size = "";
-  let data = null;
+    let code = "";
+    let color = "";
+    let size = "";
+    let data = null;
 
-  // 1️⃣ Hangten case → digit only & length >= 16
-  if (/^[0-9-]+$/.test(input) && input.length >= 16) {
-    code = input.substring(0, 16);
-    data = products?.[code];
+    // 1️⃣ Hangten case → digit only & length >= 16
+    if (/^[0-9-]+$/.test(input) && input.length >= 16) {
+      code = input.substring(0, 16);
+      data = products?.[code];
 
-    if (!data) {
-      addToast("Hangten barcode not found", "warning");
-      setBarcode("");
-      return;
-    }
-
-    const colors = Object.keys(data.colors || {});
-    const defaultColor = colors[0] || "Default";
-    const sizes = data.colors?.[defaultColor]?.sizes || {};
-    const availableSizes = Object.keys(sizes);
-    const defaultSize = availableSizes[0] || "";
-    const stockQty = defaultSize ? sizes[defaultSize].pcs : 0;
-
-    const newItem = {
-      code,
-      colors,
-      color: defaultColor,
-      size: defaultSize,
-      availableSizes,
-      qty: 1,
-      price: data.price || 0,
-      discountType: "%",
-      discountValue: 0,
-      stock: data.colors,
-      uiStock: stockQty - 1,
-      finalAmount: data.price || 0,
-    };
-    setItems((prev) => [...prev, newItem]);
-  }
-
-  // 2️⃣ Prettyfit case → code + color + size
-  else {
-    const parts = input.split(" ");
-    if (parts.length >= 3) {
-      // e.g. "3347H Brown 36"
-      code = parts[0];
-      size = parts[parts.length - 1];
-      color = parts.slice(1, -1).join(" ");
-    } else {
-      // e.g. "3347H Brown36" OR "R-2234 Red36"
-      // ✅ allow dash (-) in code
-      const match = input.match(/^([\w-]+)\s*([A-Za-z]+)\s*(\d+)$/);
-      if (!match) {
-        addToast("Invalid Prettyfit barcode format", "warning");
+      if (!data) {
+        addToast("Hangten barcode not found", "warning");
         setBarcode("");
         return;
       }
-      code = match[1];
-      color = match[2];
-      size = match[3];
+
+      const colors = Object.keys(data.colors || {});
+      const defaultColor = colors[0] || "Default";
+      const sizes = data.colors?.[defaultColor]?.sizes || {};
+      const availableSizes = Object.keys(sizes);
+      const defaultSize = availableSizes[0] || "";
+      const stockQty = defaultSize ? sizes[defaultSize].pcs : 0;
+
+      const newItem = {
+        code,
+        colors,
+        color: defaultColor,
+        size: defaultSize,
+        availableSizes,
+        qty: 1,
+        price: data.price || 0,
+        discountType: "%",
+        discountValue: 0,
+        stock: data.colors,
+        uiStock: stockQty - 1,
+        finalAmount: data.price || 0,
+        note: "",
+      };
+      setItems((prev) => [...prev, newItem]);
     }
 
-    data = products?.[code];
-    if (!data) {
-      addToast("Prettyfit code not found", "warning");
-      setBarcode("");
-      return;
+    // 2️⃣ Prettyfit case → code + color + size
+    // 2️⃣ Prettyfit case → auto + manual support
+else {
+  // Examples supported:
+  //  • "3347H Brown 36"
+  //  • "R-2234 Red36"
+  //  • "3348R"
+  //  • "3348-R"
+  //  • "R3348"
+  const inputClean = input.trim();
+  let code = "";
+  let color = "";
+  let size = "";
+
+  // 1️⃣ Full format (code + color + size)
+  const parts = inputClean.split(" ");
+  if (parts.length >= 3) {
+    code = parts[0];
+    size = parts[parts.length - 1];
+    color = parts.slice(1, -1).join(" ");
+  } 
+  else {
+    // 2️⃣ Compact form e.g. "3347HBrown36", "R-2234Red36"
+    const matchFull = inputClean.match(/^([\w-]+)\s*([A-Za-z]+)\s*(\d{1,2})$/);
+    if (matchFull) {
+      code = matchFull[1];
+      color = matchFull[2];
+      size = matchFull[3];
+    } 
+    else {
+      // 3️⃣ Manual simple code only (no color/size)
+      code = inputClean;
     }
-
-    const colors = Object.keys(data.colors || {});
-    if (!colors.includes(color)) {
-      addToast(`Color "${color}" not found`, "warning");
-      setBarcode("");
-      return;
-    }
-
-    const sizes = data.colors?.[color]?.sizes || {};
-    if (!Object.keys(sizes).includes(size)) {
-      addToast(`Size "${size}" not found`, "warning");
-      setBarcode("");
-      return;
-    }
-
-    const stockQty = sizes[size]?.pcs || 0;
-    const newItem = {
-      code,
-      colors,
-      color,
-      size,
-      availableSizes: Object.keys(sizes),
-      qty: 1,
-      price: data.price || 0,
-      discountType: "%",
-      discountValue: 0,
-      stock: data.colors,
-      uiStock: stockQty - 1,
-      finalAmount: data.price || 0,
-    };
-
-    setItems((prev) => [...prev, newItem]);
   }
 
-  // reset input
+  const data = products?.[code];
+  if (!data) {
+    addToast(`❌ Product code not found: ${code}`, "warning");
+    setBarcode("");
+    return;
+  }
+
+  const colors = Object.keys(data.colors || {});
+  const firstColor = colors[0] || "";
+  const sizesObj = data.colors?.[firstColor]?.sizes || {};
+  const firstSize = Object.keys(sizesObj)[0] || "";
+
+  // Manual only → pick first color/size automatically
+  if (!color) color = firstColor;
+  if (!size) size = firstSize;
+
+  // Validate color
+  const matchedColor = colors.find(
+    (c) =>
+      c.toLowerCase().replace(/\s+/g, "") ===
+      color.toLowerCase().replace(/\s+/g, "")
+  );
+  if (!matchedColor) {
+    addToast(`❌ Color not found: ${color}`, "warning");
+    setBarcode("");
+    return;
+  }
+
+  // Validate size
+  const availableSizes = data.colors[matchedColor]?.sizes || {};
+  const matchedSize =
+    Object.keys(availableSizes).find((s) => s == size) || firstSize;
+
+  const stockQty = availableSizes[matchedSize]?.pcs || 0;
+  const newItem = {
+    code,
+    colors,
+    color: matchedColor,
+    size: matchedSize,
+    availableSizes: Object.keys(availableSizes),
+    qty: 1,
+    price: data.price || 0,
+    discountType: "%",
+    discountValue: 0,
+    stock: data.colors,
+    uiStock: stockQty - 1,
+    finalAmount: data.price || 0,
+  };
+
+  setItems((prev) => [...prev, newItem]);
+
+  // Reset input
   setBarcode("");
   inputRef.current?.focus();
-};
+}
 
 
-
+    // reset input
+    setBarcode("");
+    inputRef.current?.focus();
+  };
 
   // ===================== ITEM CHANGE =====================
   const handleChangeItem = (index, field, value) => {
@@ -350,6 +420,8 @@ function POSAppInner() {
       it.discountType = value;
     } else if (field === "discountValue") {
       it.discountValue = Number(value) || 0; // NaN ဖြစ်ရင် 0 သတ်မှတ်
+    } else if (field === "note") {
+      it.note = value; // ✅ Add this line
     }
 
     // ✅ stock တွက်ချက်တာ
@@ -404,71 +476,73 @@ function POSAppInner() {
 
   // ===================== SAVE & PRINT =====================
   const handleConfirmPrint = async () => {
-  if (submitting) return; // Prevent multiple submissions
-  setSubmitting(true); // Start submitting to prevent double submissions
+    if (submitting) return; // Prevent multiple submissions
+    setSubmitting(true); // Start submitting to prevent double submissions
 
-  // Ensure there are items in the cart before proceeding
-  if (items.length === 0) {
-    addToast("⚠ Add items before saving", "warning");
-    setSubmitting(false); // Reset the submitting state
-    return; // Stop function execution if no items are present
-  }
+    // Ensure there are items in the cart before proceeding
+    if (items.length === 0) {
+      addToast("⚠ Add items before saving", "warning");
+      setSubmitting(false); // Reset the submitting state
+      return; // Stop function execution if no items are present
+    }
 
-  try {
-    // Get the next voucher number
-    const nextVoucherNo = await getNextVoucherNo(currentShop.username);
-    setVoucherNo(nextVoucherNo);
+    try {
+      // Get the next voucher number
+      const nextVoucherNo = await getNextVoucherNo(currentShop.username);
+      setVoucherNo(nextVoucherNo);
 
-    // Get current date and time formatted as dd/MM/yyyy and HH:mm:ss
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString("en-GB"); // dd/MM/yyyy
-    const formattedTime = now.toLocaleTimeString("en-GB", { hour12: false }); // HH:mm:ss
+      // Get current date and time formatted as dd/MM/yyyy and HH:mm:ss
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString("en-GB"); // dd/MM/yyyy
+      const formattedTime = now.toLocaleTimeString("en-GB", { hour12: false }); // HH:mm:ss
 
-    // Build the sale object
-    const sale = {
-      voucherNo: nextVoucherNo,
-      dateTime: now.toISOString(),
-      dateOnly: formattedDate,
-      paymentMethod,
-      items,
-      total,
-      discount,
-      memberDiscount,
-      finalTotal,
-      cashPaid: Number(cashPaid) || 0,
-      change: Number(change) || 0,
-      memberPhone: memberVerified ? memberPhone : null,
-      shop: currentShop?.username || "unknown",
-      couponCode,
-      couponAmount,
-    };
+      // Build the sale object
+      const sale = {
+        voucherNo: nextVoucherNo,
+        dateTime: now.toISOString(),
+        dateOnly: formattedDate,
+        paymentMethod,
+        items,
+        total,
+        discount,
+        memberDiscount,
+        finalTotal,
+        cashPaid: Number(cashPaid) || 0,
+        change: Number(change) || 0,
+        memberPhone: memberVerified ? memberPhone : null,
+        shop: currentShop?.username || "unknown",
+        couponCode,
+        couponAmount,
+        address: shopAddress,
+        deliveryCharge,
+      };
 
-    // Save the sale to local and Firebase
-    await saveSale(currentShop.username, sale);
-    addToast("Sale saved!", "success");
-    window.dispatchEvent(new Event("sales-updated"));
+      // Save the sale to local and Firebase
+      await saveSale(currentShop.username, sale);
+      addToast("Sale saved!", "success");
+      window.dispatchEvent(new Event("sales-updated"));
 
-    // Stock update logic (avoid deleting stock)
-    const products = await getProductsFromDB(currentShop.username);
-    items.forEach((it) => {
-      if (products[it.code]?.colors[it.color]?.sizes[it.size]) {
-        const stock = products[it.code]?.colors[it.color]?.sizes[it.size];
-        if (stock) {
-          stock.pcs = Math.max(0, stock.pcs - it.qty);
+      // Stock update logic (avoid deleting stock)
+      const products = await getProductsFromDB(currentShop.username);
+      items.forEach((it) => {
+        if (products[it.code]?.colors[it.color]?.sizes[it.size]) {
+          const stock = products[it.code]?.colors[it.color]?.sizes[it.size];
+          if (stock) {
+            stock.pcs = Math.max(0, stock.pcs - it.qty);
+          }
+          if (products[it.code].colors[it.color].sizes[it.size].pcs < 0) {
+            products[it.code].colors[it.color].sizes[it.size].pcs = 0;
+          }
         }
-        if (products[it.code].colors[it.color].sizes[it.size].pcs < 0) {
-          products[it.code].colors[it.color].sizes[it.size].pcs = 0;
-        }
-      }
-    });
+      });
 
-    // Save updated products to local DB
-    await saveProductsToDB(currentShop.username, products);
+      // Save updated products to local DB
+      await saveProductsToDB(currentShop.username, products);
 
-    // PRINT receipt window
-    const content = document.querySelector(".receipt")?.outerHTML || "";
-    const win = window.open("", "_blank", "width=300,height=600");
-    win.document.write(`
+      // PRINT receipt window
+      const content = document.querySelector(".receipt")?.outerHTML || "";
+      const win = window.open("", "_blank", "width=300,height=600");
+      win.document.write(`
       <html>
         <head>
           <style>
@@ -483,86 +557,97 @@ function POSAppInner() {
         <body>${content}</body>
       </html>
     `);
-    win.document.close();
-    setTimeout(() => {
-      win.print();
-      win.close();
-    }, 500);
+      win.document.close();
+      setTimeout(() => {
+        win.print();
+        win.close();
+      }, 500);
 
-    // Mall API Data (Send data before reset)
-    const mallSale = {
-      PosSales: [
-        {
-          PropertyCode: "JC",
-          POSInterfaceCode: "JC-POS-00000198",
-          ReceiptDate: formattedDate,
-          ReceiptTime: formattedTime,
-          ReceiptNo: nextVoucherNo,
-          NoOfItems: items.length,
-          SalesCurrency: "MMK",
-          TotalSalesAmtB4Tax: total,
-          TotalSalesAmtAfterTax: finalTotal,
-          SalesTaxRate: 5,
-          ServiceChargeAmt: 0,
-          PaymentAmt: finalTotal,
-          PaymentCurrency: "MMK",
-          PaymentMethod: paymentMethod,
-          SalesType: "Sales",
-          SalesDiscountAmt: discount + memberDiscount + couponAmount,
-        },
-      ],
-    };
+      // Mall API Data (Send data before reset)
+      const mallSale = {
+        PosSales: [
+          {
+            PropertyCode: "JC",
+            POSInterfaceCode: "JC-POS-00000198",
+            ReceiptDate: formattedDate,
+            ReceiptTime: formattedTime,
+            ReceiptNo: nextVoucherNo,
+            NoOfItems: items.length,
+            SalesCurrency: "MMK",
+            TotalSalesAmtB4Tax: total,
+            TotalSalesAmtAfterTax: finalTotal,
+            SalesTaxRate: 5,
+            ServiceChargeAmt: 0,
+            PaymentAmt: finalTotal,
+            PaymentCurrency: "MMK",
+            PaymentMethod: paymentMethod,
+            SalesType: "Sales",
+            SalesDiscountAmt: discount + memberDiscount + couponAmount,
+          },
+        ],
+      };
 
-    // Mall API call (optional / safe)
-    try {
-      const res = await fetch("http://localhost:3001/sendSale", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mallSale),
-      });
+      // Mall API call (optional / safe)
+      try {
+        const res = await fetch("http://localhost:3001/sendSale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mallSale),
+        });
 
-      if (!res.ok) throw new Error(`Mall API HTTP ${res.status}`);
-      const data = await res.json();
-      console.log("Mall API Response:", data);
-      addToast("Mall API: " + (data.returnStatus || "SENT"), "info");
+        if (!res.ok) throw new Error(`Mall API HTTP ${res.status}`);
+        const data = await res.json();
+        console.log("Mall API Response:", data);
+        addToast("Mall API: " + (data.returnStatus || "SENT"), "info");
+      } catch (err) {
+        // Log the error for debugging but avoid interrupting the POS flow
+        console.warn("Mall API Error (ignored):", err.message);
+        addToast("Mall API unavailable (testing only)", "warning");
+      }
+
+      // RESET form and prepare the next voucher number for UI
+      const previewNo = await previewVoucherNo(currentShop.username);
+      setVoucherNo(nextVoucherNo);
+      setItems([]); // Clear items after printing
+      setCashPaid("");
+      setChange(0);
+      setCouponAmount(0);
+      setCouponCode("");
+      setMemberVerified(false);
+      setShowDialog(false);
     } catch (err) {
-      // Log the error for debugging but avoid interrupting the POS flow
-      console.warn("Mall API Error (ignored):", err.message);
-      addToast("Mall API unavailable (testing only)", "warning");
+      addToast("Failed to save sale: " + (err.message || err), "error");
+    } finally {
+      setSubmitting(false); // End submitting process
     }
-
-    // RESET form and prepare the next voucher number for UI
-    const previewNo = await previewVoucherNo(currentShop.username);
-    setVoucherNo(nextVoucherNo);
-    setItems([]); // Clear items after printing
-    setCashPaid("");
-    setChange(0);
-    setCouponAmount(0);
-    setCouponCode("");
-    setMemberVerified(false);
-    setShowDialog(false);
-
-  } catch (err) {
-    addToast("Failed to save sale: " + (err.message || err), "error");
-  } finally {
-    setSubmitting(false); // End submitting process
-  }
-};
-
-
-  const getShopBrandName = (shopId) => {
-    const hangtenShops = ["shop1", "shop2", "shop3", "shop4", "shop5", "shop6", "shop7"];
-    const prettyfitShops = ["shop8", "shop9", "shop10", "shop11"];
-
-    if (hangtenShops.includes(shopId)) {
-      return "HANGTEN MYANMAR";
-    }
-    if (prettyfitShops.includes(shopId)) {
-      return "PRETTYFIT MYANMAR";
-    }
-    return "MY SHOP";
   };
 
+  const getShopBrandName = (shopId, shopName = "") => {
+    const name = shopName.toLowerCase();
+
+    // ✅ auto detect by shopName keyword
+    if (name.includes("prettyfit")) return "PRETTYFIT MYANMAR";
+    if (name.includes("hangten") || name.includes("hang ten"))
+      return "HANGTEN MYANMAR";
+
+    // ✅ fallback by shop ID
+    const hangtenShops = [
+      "shop1",
+      "shop2",
+      "shop3",
+      "shop4",
+      "shop5",
+      "STHT",
+      "DNGHT",
+      "shop14",
+    ];
+    const prettyfitShops = ["STPF", "shop9", "shop10", "DNGPF", "shop15"];
+
+    if (hangtenShops.includes(shopId)) return "HANGTEN MYANMAR";
+    if (prettyfitShops.includes(shopId)) return "PRETTYFIT MYANMAR";
+
+    return "MY SHOP";
+  };
 
   return (
     <div className="container">
@@ -571,7 +656,9 @@ function POSAppInner() {
         <div>
           <div className="card header">
             <div className="title">
-              <h2>{getShopBrandName(currentShop.username)}</h2>
+              <h2>
+                {getShopBrandName(currentShop.username, currentShop.shopName)}
+              </h2>
 
               <p>
                 Shop Location - {currentShop.shopName || currentShop.username}
@@ -638,6 +725,7 @@ function POSAppInner() {
                   <th>DiscountType</th>
                   <th>DiscountValue</th>
                   <th>FinalAmount</th>
+                  <th>Note</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -731,6 +819,18 @@ function POSAppInner() {
                       </td>
                       <td>{it.finalAmount}</td>
                       <td>
+                        <input
+                          type="text"
+                          placeholder="Note"
+                          value={it.note || ""}
+                          onChange={(e) =>
+                            handleChangeItem(idx, "note", e.target.value)
+                          }
+                          style={{ width: 100 }}
+                        />
+                      </td>
+
+                      <td>
                         <motion.button
                           onClick={() => handleDelete(idx)}
                           whileTap={{ scale: 0.8, rotate: -15 }}
@@ -754,6 +854,23 @@ function POSAppInner() {
             </table>
 
             {/* PAYMENT */}
+            {/* DELIVERY CHARGE */}
+            <div style={{ marginTop: 12 }}>
+              <label>Delivery Charge:</label>
+              <input
+                type="number"
+                value={deliveryCharge}
+                onChange={(e) => setDeliveryCharge(Number(e.target.value) || 0)}
+                style={{
+                  marginLeft: 8,
+                  width: 120,
+                  borderRadius: 6,
+                  border: "1px solid #ccc",
+                  padding: "4px 6px",
+                }}
+              />
+            </div>
+
             <div style={{ marginTop: 12 }}>
               <label>Payment: </label>
               <select
@@ -787,20 +904,70 @@ function POSAppInner() {
               </div>
             </div>
 
+            <div
+              style={{
+                marginTop: 16,
+                background: "linear-gradient(to right, #f9fafb, #f3f4f6)",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                padding: "12px 16px",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+                transition: "all 0.3s ease",
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: "#374151",
+                  marginBottom: 6,
+                }}
+              >
+                🏠 Shop Address
+              </label>
+              <input
+                type="text"
+                value={shopAddress}
+                onChange={(e) => setShopAddress(e.target.value)}
+                placeholder="Enter your shop address..."
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  outline: "none",
+                  background: "#fff",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+              />
+            </div>
             <div className="summary" style={{ marginTop: 8 }}>
               <p>
                 Total: <b>{total.toLocaleString()} Ks</b>
               </p>
+
               <p>Discount: {discount.toLocaleString()} Ks</p>
+
               <p style={{ color: memberVerified ? "#059669" : "#6b7280" }}>
                 Member Discount:{" "}
                 {memberVerified
                   ? `${memberDiscount.toLocaleString()} Ks (10%)`
                   : 0}
               </p>
+
               <p>Coupon: {couponAmount} Ks</p>
-              <p>
-                <b>Final Amount: {finalTotal.toLocaleString()} Ks</b>
+
+              {/* Delivery charge */}
+              <p>Delivery Charge: {deliveryCharge.toLocaleString()} Ks</p>
+
+              {/* Final + Grand total */}
+              
+              <p style={{ fontWeight: "bold", color: "#2563eb" }}>
+                Grand Total: {(finalTotal + deliveryCharge).toLocaleString()} Ks
               </p>
             </div>
 
@@ -829,23 +996,37 @@ function POSAppInner() {
                   alt="Shop Logo"
                   style={{ height: 30, objectFit: "contain" }}
                 />
-
               </div>
               <div style={{ textAlign: "center", marginBottom: 8 }}>
                 <div>{currentShop.shopName}</div>
                 <div style={{ color: "#6b7280" }}>{currentShop.phone}</div>
               </div>
               <div style={{ borderTop: "1px solid #eee", paddingTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>{voucherNo}</div><div>{formattedDate}</div></div>
-                <div style={{ textAlign: "right", fontSize: 12, color: "#6b7280" }}>{formattedTime}</div>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>{voucherNo}</div>
+                  <div>{formattedDate}</div>
+                </div>
+                <div
+                  style={{ textAlign: "right", fontSize: 12, color: "#6b7280" }}
+                >
+                  {formattedTime}
+                </div>
                 <div>Member: {memberVerified ? memberPhone : "-"}</div>
                 <div>Coupon: {couponCode || "-"} </div>
               </div>
               <div style={{ marginTop: 8 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 13,
+                  }}
+                >
                   <thead>
                     <tr>
-                      <th style={{ textAlign: "center" }}>Code</th>
+                      <th style={{ textAlign: "start" }}>Code</th>
                       <th style={{ textAlign: "center" }}>Color</th>
                       <th style={{ textAlign: "center" }}>Size</th>
                       <th style={{ textAlign: "center" }}>Qty</th>
@@ -860,24 +1041,116 @@ function POSAppInner() {
                         <td style={{ textAlign: "center" }}>{it.color}</td>
                         <td style={{ textAlign: "center" }}>{it.size}</td>
                         <td style={{ textAlign: "center" }}>{it.qty}</td>
-                        <td style={{ textAlign: "center" }}>{it.price.toLocaleString()}</td>
-                        <td style={{ textAlign: "center" }}>{it.finalAmount.toLocaleString()}</td>
+                        <td style={{ textAlign: "center" }}>
+                          {it.price.toLocaleString()}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {it.finalAmount.toLocaleString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
-
                 </table>
               </div>
-              <div style={{ marginTop: 12, borderTop: "1px solid #eee", paddingTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Total</div><div>{total.toLocaleString()}</div></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Discount</div><div>{discount.toLocaleString()}</div></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Member Discount</div><div>{memberVerified ? memberDiscount.toLocaleString() + " " : 0}</div></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Coupon</div><div>{couponAmount} </div></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700 }}><div>Grand Total</div><div>{finalTotal.toLocaleString()} </div></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Payment</div><div>{paymentMethod}</div></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><div>Change</div><div>{change.toLocaleString()} </div></div>
+              <div
+                style={{
+                  marginTop: 12,
+                  borderTop: "1px solid #eee",
+                  paddingTop: 8,
+                }}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Total</div>
+                  <div>{total.toLocaleString()}</div>
+                </div>
+
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Discount</div>
+                  <div>{discount.toLocaleString()}</div>
+                </div>
+
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Member Discount</div>
+                  <div>
+                    {memberVerified ? memberDiscount.toLocaleString() : 0}
+                  </div>
+                </div>
+
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Coupon</div>
+                  <div>{couponAmount}</div>
+                </div>
+
+                {/* ✅ Delivery Charge added here */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Delivery Charge</div>
+                  <div>{deliveryCharge.toLocaleString()}</div>
+                </div>
+
+                {/* ✅ Grand Total updated */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontWeight: 700,
+                  }}
+                >
+                  <div>Grand Total</div>
+                  <div>{(finalTotal + deliveryCharge).toLocaleString()}</div>
+                </div>
+
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Payment</div>
+                  <div>{paymentMethod}</div>
+                </div>
+
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Change</div>
+                  <div>{change.toLocaleString()}</div>
+                </div>
               </div>
-              <div style={{ textAlign: "center", marginTop: 12 }}>Thank You For Shopping US</div>
+
+              {/* PRINT PREVIEW FOOTER */}
+              {/* PRINT PREVIEW FOOTER */}
+              <div
+                style={{
+                  marginTop: 12,
+                  borderTop: "1px solid #eee",
+                  paddingTop: 8,
+                  textAlign: "center",
+                }}
+              >
+                {shopAddress && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#000",
+                      marginBottom: 4,
+                      fontFamily: "Arial, sans-serif",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    🏠 {shopAddress}
+                  </div>
+                )}
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  Thank You For Shopping With Us 💖
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -937,7 +1210,7 @@ function POSAppInner() {
 // ROUTES
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<MainLayout />}>
@@ -950,9 +1223,10 @@ export default function App() {
           <Route path="/lowstock" element={<LowStockPage />} />
           <Route path="/salereturn" element={<SaleReturnPage />} />
           <Route path="/salereturn/history" element={<SaleReturnHistory />} />
+          <Route path="/purchase" element={<PurchasePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

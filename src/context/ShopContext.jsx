@@ -5,12 +5,39 @@ import { getDatabase, ref, onValue } from "firebase/database";
 const ShopContext = createContext();
 
 export function ShopProvider({ children }) {
-  const [currentShop, setCurrentShop] = useState(null);
+  const [currentShop, setCurrentShopState] = useState(null); // internal state
+  const [branch, setBranch] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // ✅ Firebase listener → Pending transfer count
+  // load saved shop from localStorage (if any)
   useEffect(() => {
-    if (!currentShop?.username) return;
+    const saved = localStorage.getItem("currentShop");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCurrentShopState(parsed);
+      } catch (e) {
+        console.error("Invalid saved shop data:", e);
+      }
+    }
+  }, []);
+
+  // whenever currentShop changes, persist to localStorage
+  useEffect(() => {
+    if (currentShop) {
+      localStorage.setItem("currentShop", JSON.stringify(currentShop));
+    } else {
+      localStorage.removeItem("currentShop");
+    }
+  }, [currentShop]);
+
+  // firebase listener for transferLogs to calculate pendingCount
+  useEffect(() => {
+    if (!currentShop?.username) {
+      setPendingCount(0);
+      return;
+    }
+
     const db = getDatabase();
     const logsRef = ref(db, "transferLogs");
 
@@ -22,27 +49,52 @@ export function ShopProvider({ children }) {
 
       const logs = snapshot.val();
       let count = 0;
-      Object.values(logs).forEach((log) => {
-  // log ထဲက items တစ်ခုချင်းစီ စစ်
-  (log.items || []).forEach((item) => {
-    if ((!item.status || item.status === "Pending") &&
-        (log.to === currentShop.username || log.from === currentShop.username)) {
-      count++;
-    }
-  });
-});
-setPendingCount(count);
 
+      Object.values(logs).forEach((log) => {
+        (log.items || []).forEach((item) => {
+          const isPending = !item.status || item.status === "Pending";
+          const isMyShop =
+            log.to === currentShop.username || log.from === currentShop.username;
+
+          if (isPending && isMyShop) count++;
+        });
+      });
+
+      setPendingCount(count);
     });
 
     return () => unsubscribe();
   }, [currentShop]);
+
+  // when currentShop changes, auto-init branch if available
+  useEffect(() => {
+    if (!currentShop?.branches) {
+      setBranch(null);
+      return;
+    }
+
+    const branches =
+      Array.isArray(currentShop.branches)
+        ? currentShop.branches
+        : Object.keys(currentShop.branches || {});
+
+    setBranch(branches[0] || null);
+  }, [currentShop]);
+
+  // wrapper to set current shop (keeps password or other cached fields)
+  const setCurrentShop = (shopObj) => {
+    // accept either a full shop object or null to logout
+    setCurrentShopState(shopObj);
+    // localStorage persistence handled by effect above
+  };
 
   return (
     <ShopContext.Provider
       value={{
         currentShop,
         setCurrentShop,
+        branch,
+        setBranch,
         pendingCount,
       }}
     >

@@ -1,7 +1,9 @@
 {
   "projects": {
     "default": "honexpos-2025",
-    "production": "honexpos-2025"
+    "production": "honexpos-2025",
+
+    "final": "honexpos-2025"
   },
   "targets": {},
   "etags": {}

@@ -6,6 +6,7 @@ import {
   onValue,
   update,
   runTransaction,
+  get,
 } from "firebase/database";
 import * as XLSX from "xlsx";
 import { useShop } from "../context/ShopContext";
@@ -15,10 +16,18 @@ export default function ShopTransferNoti() {
   const [logs, setLogs] = useState([]);
   const [shops, setShops] = useState({});
   const [selectedLog, setSelectedLog] = useState(null);
-
   const [editModal, setEditModal] = useState({ open: false, idx: null });
-  const [editItem, setEditItem] = useState({ color: "", size: "", qty: 1 });
+  const [editItem, setEditItem] = useState({
+    color: "",
+    size: "",
+    qty: 1,
+    code: "",
+  });
 
+  const [availableColors, setAvailableColors] = useState([]);
+  const [availableSizes, setAvailableSizes] = useState([]);
+  const [availableQty, setAvailableQty] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
 
   // 🔄 Load shops info realtime
@@ -49,7 +58,6 @@ export default function ShopTransferNoti() {
       );
       setLogs(filtered.reverse());
 
-      // ✅ unread count calc
       const count = filtered.filter(
         (log) => !log.seenBy?.[currentShop.username]
       ).length;
@@ -57,7 +65,7 @@ export default function ShopTransferNoti() {
     });
   }, [currentShop]);
 
-  // ✅ Seen (voucher open လိုက်တာနဲ့ unread clear)
+  // ✅ Seen
   const handleSeen = async (logId) => {
     if (!currentShop?.username) return;
     const db = getDatabase();
@@ -67,7 +75,7 @@ export default function ShopTransferNoti() {
     setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
   };
 
-  // ✅ Accept row → Receiver stock +qty + price + update root status
+  // ✅ Accept row
   const handleAccept = async (idx) => {
     if (!selectedLog) return;
     const db = getDatabase();
@@ -78,30 +86,24 @@ export default function ShopTransferNoti() {
     items[idx] = { ...item, status: "Accepted" };
     setSelectedLog((prev) => ({ ...prev, items }));
 
-    // Firebase update (log + root status)
     await update(ref(db, `transferLogs/${selectedLog.id}`), {
       items,
       status: "Accepted",
     });
 
-    // qty update
     const stockRef = ref(
       db,
       `shops/${selectedLog.to}/products/${item.code}/colors/${item.color}/sizes/${item.size}/pcs`
     );
     await runTransaction(stockRef, (cur) => (cur || 0) + item.qty);
 
-    // price update
     if (item.price) {
-      const priceRef = ref(
-        db,
-        `shops/${selectedLog.to}/products/${item.code}`
-      );
+      const priceRef = ref(db, `shops/${selectedLog.to}/products/${item.code}`);
       await update(priceRef, { price: item.price });
     }
   };
 
-  // ✅ Cancel row → Sender stock +qty + update root status
+  // ✅ Cancel row
   const handleCancel = async (idx) => {
     if (!selectedLog) return;
     const db = getDatabase();
@@ -124,9 +126,86 @@ export default function ShopTransferNoti() {
     await runTransaction(stockRef, (cur) => (cur || 0) + item.qty);
   };
 
-  // ✅ Save edit (Sender only → qty, color, size)
+  // ✅ Load available colors & sizes from inventory
+  const loadInventory = async (code) => {
+    const db = getDatabase();
+    const snap = await get(
+      ref(db, `shops/${currentShop.username}/products/${code}/colors`)
+    );
+    if (snap.exists()) {
+      const colorsObj = snap.val();
+      const colorKeys = Object.keys(colorsObj);
+      setAvailableColors(colorKeys);
+      return colorsObj;
+    } else {
+      setAvailableColors([]);
+      setAvailableSizes([]);
+      setAvailableQty(0);
+      return {};
+    }
+  };
+
+  // ✅ Open Edit Modal
+  const openEditModal = async (it, idx) => {
+    setEditItem(it);
+    setEditModal({ open: true, idx });
+    const colorsData = await loadInventory(it.code);
+
+    // load sizes of current color
+    if (colorsData[it.color]?.sizes) {
+      setAvailableSizes(Object.keys(colorsData[it.color].sizes));
+      const qty =
+        colorsData[it.color].sizes[it.size]?.pcs > 0
+          ? colorsData[it.color].sizes[it.size].pcs
+          : 0;
+      setAvailableQty(qty);
+    }
+  };
+
+  // ✅ When color changes
+  const handleColorChange = async (color, code) => {
+    const db = getDatabase();
+    setEditItem({ ...editItem, color, size: "", qty: 1 });
+    const sizeSnap = await get(
+      ref(
+        db,
+        `shops/${currentShop.username}/products/${code}/colors/${color}/sizes`
+      )
+    );
+    if (sizeSnap.exists()) {
+      setAvailableSizes(Object.keys(sizeSnap.val()));
+    } else {
+      setAvailableSizes([]);
+    }
+    setAvailableQty(0);
+  };
+
+  // ✅ When size changes
+  const handleSizeChange = async (size, code, color) => {
+    const db = getDatabase();
+    setEditItem({ ...editItem, size, qty: 1 });
+    const pcsSnap = await get(
+      ref(
+        db,
+        `shops/${currentShop.username}/products/${code}/colors/${color}/sizes/${size}/pcs`
+      )
+    );
+    if (pcsSnap.exists()) {
+      setAvailableQty(pcsSnap.val());
+    } else {
+      setAvailableQty(0);
+    }
+  };
+
+  // ✅ Save edit
   const handleEditSave = async () => {
     if (!selectedLog) return;
+
+    if (editItem.qty > availableQty) {
+      setErrorMsg(`⚠ Qty မလုံလောက်ပါ (stock: ${availableQty})`);
+      return;
+    }
+
     const db = getDatabase();
     const items = [...selectedLog.items];
     items[editModal.idx] = {
@@ -172,7 +251,7 @@ export default function ShopTransferNoti() {
     XLSX.writeFile(wb, `Voucher-${selectedLog.voucherNo}.xlsx`);
   };
 
-  // 👉 Detail View
+  // ✅ Detail View
   if (selectedLog) {
     const totals = calcTotals(selectedLog.items);
     return (
@@ -215,10 +294,7 @@ export default function ShopTransferNoti() {
                       <>
                         <button
                           className="btn-edit"
-                          onClick={() => {
-                            setEditItem(it);
-                            setEditModal({ open: true, idx });
-                          }}
+                          onClick={() => openEditModal(it, idx)}
                         >
                           Edit
                         </button>
@@ -261,28 +337,6 @@ export default function ShopTransferNoti() {
                 </td>
               </tr>
             ))}
-
-            <tr className="font-bold">
-              <td colSpan="5" align="right">
-                All Qty
-              </td>
-              <td>{totals.all}</td>
-              <td colSpan="2"></td>
-            </tr>
-            <tr className="font-bold">
-              <td colSpan="5" align="right">
-                Accepted Qty
-              </td>
-              <td>{totals.accepted}</td>
-              <td colSpan="2"></td>
-            </tr>
-            <tr className="font-bold">
-              <td colSpan="5" align="right">
-                Cancelled Qty
-              </td>
-              <td>{totals.cancelled}</td>
-              <td colSpan="2"></td>
-            </tr>
           </tbody>
         </table>
 
@@ -295,34 +349,72 @@ export default function ShopTransferNoti() {
           </button>
         </div>
 
+        {/* ✅ Edit Modal */}
         {editModal.open && (
           <div className="modal-overlay">
-            <div className="modal bg-white p-4 rounded shadow">
+            <div className="modal bg-white p-4 rounded shadow w-[300px]">
               <h3 className="text-lg font-bold mb-4">Edit Transfer Item</h3>
-              <input
-                type="text"
+
+              {/* Color */}
+              <label>Color:</label>
+              <select
                 value={editItem.color}
-                placeholder="Color"
                 onChange={(e) =>
-                  setEditItem({ ...editItem, color: e.target.value })
+                  handleColorChange(e.target.value, editItem.code)
                 }
-              />
-              <input
-                type="text"
+              >
+                <option value="">Select color</option>
+                {availableColors.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+
+              {/* Size */}
+              <label>Size:</label>
+              <select
                 value={editItem.size}
-                placeholder="Size"
                 onChange={(e) =>
-                  setEditItem({ ...editItem, size: e.target.value })
+                  handleSizeChange(
+                    e.target.value,
+                    editItem.code,
+                    editItem.color
+                  )
                 }
-              />
+              >
+                <option value="">Select size</option>
+                {availableSizes.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+
+              {/* Qty */}
+              <label>Qty (stock: {availableQty})</label>
               <input
                 type="number"
-                value={editItem.qty}
                 min="1"
-                onChange={(e) =>
-                  setEditItem({ ...editItem, qty: Number(e.target.value) })
-                }
+                value={editItem.qty}
+                onKeyDown={(e) => {
+                  // ❌ Prevent minus or e/E character
+                  if (e.key === "-" || e.key === "e" || e.key === "E") {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  // ✅ Qty can't be less than 1
+                  if (val < 1 || isNaN(val)) return;
+                  setEditItem({ ...editItem, qty: val });
+                }}
               />
+
+              {errorMsg && (
+                <div className="text-red-600 text-sm mt-2">{errorMsg}</div>
+              )}
+
               <div className="flex gap-2 mt-3">
                 <button
                   className="btn-cancel"
@@ -330,7 +422,11 @@ export default function ShopTransferNoti() {
                 >
                   Close
                 </button>
-                <button className="btn-save" onClick={handleEditSave}>
+                <button
+                  className="btn-save"
+                  onClick={handleEditSave}
+                  disabled={!editItem.color || !editItem.size}
+                >
                   Save
                 </button>
               </div>
@@ -372,8 +468,7 @@ export default function ShopTransferNoti() {
               }}
             >
               <p className="font-semibold">
-                Voucher:{" "}
-                <span className="text-blue-600">{log.voucherNo}</span>
+                Voucher: <span className="text-blue-600">{log.voucherNo}</span>
               </p>
               <p className="text-sm text-gray-500">
                 From: <b>{shops[log.from]?.shopName || log.from}</b> → To:{" "}

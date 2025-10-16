@@ -1,19 +1,51 @@
 {
   "name": "pos-system",
+  "version": "1.0.3",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "main": "electron.js",
+  "author": "Htet",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "start": "electron .",
+    "build:web": "vite build",
+    "build": "electron-builder",
+    "dist": "npm run build:web && electron-builder",
+    "server": "node src/server.js",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "server": "node src/server.js"
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.honex.pos",
+    "productName": "POS System",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "public/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://pos.honexpos.site/"
+      }
+    ]
   },
   "dependencies": {
     "axios-debug-log": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "file-saver": "^2.0.5",
     "firebase": "^12.3.0",
@@ -31,6 +63,8 @@
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^30.5.1",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

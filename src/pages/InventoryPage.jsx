@@ -90,12 +90,19 @@ function InventoryPage() {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">
-       <p>
-  📦 Inventory — {currentShop?.shopName || "No Shop"}
-</p>
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-4">
+        <p>📦 Inventory — {currentShop?.shopName || "No Shop"}</p>
 
-        {!isOnline && <span className="text-red-500">(Offline Mode)</span>}
+        {products.length > 0 && (
+          <div className="total-box">
+            <div className="label">Total Qty</div>
+            <div className="number">
+              {products.reduce((sum, p) => sum + (p.qty || 0), 0)}
+            </div>
+          </div>
+        )}
+
+        {!isOnline && <span className="text-red-500 ml-4">(Offline Mode)</span>}
       </h1>
 
       <div className="table-container">
@@ -112,7 +119,10 @@ function InventoryPage() {
           <tbody>
             {products.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: "center", padding: "12px" }}>
+                <td
+                  colSpan="5"
+                  style={{ textAlign: "center", padding: "12px" }}
+                >
                   No products found
                 </td>
               </tr>
@@ -132,9 +142,6 @@ function InventoryPage() {
           </tbody>
         </table>
       </div>
-
-      
-
     </div>
   );
 }

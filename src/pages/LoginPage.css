@@ -1,20 +1,37 @@
-/* Login Page Styling */
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+
+  /*ပုံနဲ့တိတိသွားအောင် */
+  background-image: url("/pom.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  position: relative;
   font-family: Arial, sans-serif;
 }
 
+.login-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  
+  z-index: 0;
+}
+
 .login-box {
-  background: white;
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.9); /* အနည်းငယ် 투명 */
   padding: 40px 30px;
   border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
   width: 300px;
   text-align: center;
+  backdrop-filter: blur(6px); /* glass blur effect */
 }
 
 .login-box h2 {
@@ -54,6 +71,7 @@
 .login-box button:hover {
   background: #4338ca;
 }
+
 /* Loading Overlay */
 .loading-overlay {
   position: fixed;

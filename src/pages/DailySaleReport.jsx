@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import localforage from "localforage";
 import { useShop } from "../context/ShopContext";
 
-// Helper function to calculate amounts
+// 🧮 Helper: calculate each item amount (excluding coupon)
 function calculateAmounts(item, isMember) {
   const qty = Number(item?.qty || 0);
   const price = Number(item?.price || 0);
@@ -16,22 +16,20 @@ function calculateAmounts(item, isMember) {
   }
 
   const afterDiscount = base - discountAmt;
-  let memberDiscount = isMember ? afterDiscount * 0.1 : 0;
+  const memberDiscount = isMember ? afterDiscount * 0.1 : 0;
+  const finalAmount = afterDiscount - memberDiscount;
 
-  const couponAmt = Number(item?.couponAmount || 0);
-  const finalAmount = afterDiscount - memberDiscount - couponAmt;
-
-  return { base, discountAmt, memberDiscount, couponAmt, finalAmount };
+  return { base, discountAmt, memberDiscount, finalAmount };
 }
 
-// ✅ yyyy-MM-dd → dd/MM/yyyy
+// 🔢 yyyy-MM-dd → dd/MM/yyyy
 function toDMY(ymdStr) {
   if (!ymdStr) return "";
   const [y, m, d] = ymdStr.split("-");
   return `${d}/${m}/${y}`;
 }
 
-// ✅ format Date object → dd/MM/yy
+// 🗓️ Format Date → dd/MM/yy
 function formatDateDMY(dateObj) {
   const d = String(dateObj.getDate()).padStart(2, "0");
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -41,14 +39,11 @@ function formatDateDMY(dateObj) {
 
 export default function DailySaleReport() {
   const { currentShop } = useShop();
-  const today = new Date().toISOString().split("T")[0]; // yyyy-MM-dd
+  const today = new Date().toISOString().split("T")[0];
 
-  // state ကို yyyy-MM-dd အနေနဲ့ သိမ်း
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState([]);
-
-  // 🟢 Filter လိုက်ပြီး ရလာတဲ့အမှန် Sale Date Range
   const [saleRange, setSaleRange] = useState({ from: null, to: null });
 
   useEffect(() => {
@@ -60,11 +55,9 @@ export default function DailySaleReport() {
 
       const filteredSales = allSales.filter((s) => {
         if (!s?.dateTime) return false;
-
         const saleDate = new Date(s.dateTime);
         const startObj = new Date(`${startDate}T00:00:00`);
         const endObj = new Date(`${endDate}T23:59:59`);
-
         return saleDate >= startObj && saleDate <= endObj;
       });
 
@@ -74,14 +67,10 @@ export default function DailySaleReport() {
         return;
       }
 
-      // 🟢 Sale Date Range ကို ထုတ်ယူ
       const dates = filteredSales.map((s) => new Date(s.dateTime));
-      const minDate = new Date(Math.min(...dates));
-      const maxDate = new Date(Math.max(...dates));
-
       setSaleRange({
-        from: formatDateDMY(minDate),
-        to: formatDateDMY(maxDate),
+        from: formatDateDMY(new Date(Math.min(...dates))),
+        to: formatDateDMY(new Date(Math.max(...dates))),
       });
 
       setSales(filteredSales);
@@ -94,7 +83,7 @@ export default function DailySaleReport() {
     return () => window.removeEventListener("sales-updated", onSalesUpdate);
   }, [startDate, endDate, currentShop]);
 
-  // Group sales by voucher number
+  // 🧾 Group by voucher number
   const grouped = {};
   sales.forEach((s) => {
     if (!s?.voucherNo) return;
@@ -107,21 +96,18 @@ export default function DailySaleReport() {
         payment: s.paymentMethod || "-",
         couponCode: s.couponCode || "-",
         couponAmount: s.couponAmount || 0,
+        address: s.address || "-",
+        deliveryCharge: s.deliveryCharge || 0,
         date: s.dateTime ? formatDateDMY(new Date(s.dateTime)) : "-",
-        time: s.dateTime ? new Date(s.dateTime).toTimeString().split(" ")[0] : "-",
+        time: s.dateTime
+          ? new Date(s.dateTime).toTimeString().split(" ")[0]
+          : "-",
         memberPhone: s.memberPhone,
       });
     });
   });
 
-  // Calculate overall total
   let overall = 0;
-  Object.values(grouped).forEach((items) => {
-    items.forEach((it) => {
-      const { finalAmount } = calculateAmounts(it, !!it.memberPhone);
-      overall += finalAmount;
-    });
-  });
 
   return (
     <div className="report-container p-4">
@@ -133,7 +119,7 @@ export default function DailySaleReport() {
         ) — {currentShop?.shopName || "No Shop"}
       </h2>
 
-      {/* Date Filter (real date input + UI dd/MM/yyyy) */}
+      {/* 🔍 Date Filter */}
       <div className="date-filter flex gap-4 mb-4">
         <div>
           <label>Start Date</label>
@@ -142,7 +128,6 @@ export default function DailySaleReport() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
-          
         </div>
         <div>
           <label>End Date</label>
@@ -151,12 +136,11 @@ export default function DailySaleReport() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
-          
         </div>
       </div>
 
-      <table className="report-table w-full border">
-        <thead>
+      <table className="report-table w-full border text-sm">
+        <thead className="bg-gray-100">
           <tr>
             <th>Date</th>
             <th>Time</th>
@@ -169,29 +153,52 @@ export default function DailySaleReport() {
             <th>Price</th>
             <th>Discount</th>
             <th>Member Discount</th>
-            <th>Coupon Amount</th>
+            <th></th>
             <th>Amount</th>
-            <th>Coupon Code</th>
+            <th></th>
             <th>VR No</th>
             <th>Payment</th>
+            <th>Note</th>
           </tr>
         </thead>
+
         <tbody>
           {Object.keys(grouped).length === 0 && (
             <tr>
-              <td colSpan="16" className="p-4 text-center text-gray-500">
+              <td colSpan="17" className="p-4 text-center text-gray-500">
                 No sales found
               </td>
             </tr>
           )}
 
           {Object.keys(grouped).map((vrNo) => {
+            const voucherItems = grouped[vrNo];
+            const firstItem = voucherItems[0];
+            const couponAmt = Number(firstItem?.couponAmount || 0);
+            const couponCode = firstItem?.couponCode || "-";
+            const address = firstItem?.address || "-";
+            const deliveryCharge = Number(firstItem?.deliveryCharge || 0);
+
             let vrTotal = 0;
+            voucherItems.forEach((item) => {
+              const { finalAmount } = calculateAmounts(
+                item,
+                !!item.memberPhone
+              );
+              vrTotal += finalAmount;
+            });
+
+            vrTotal -= couponAmt;
+            vrTotal += deliveryCharge; // ✅ add delivery charge
+            overall += vrTotal;
+
             return (
               <React.Fragment key={vrNo}>
-                {grouped[vrNo].map((item, i) => {
-                  const { finalAmount } = calculateAmounts(item, !!item.memberPhone);
-                  vrTotal += finalAmount;
+                {voucherItems.map((item, i) => {
+                  const { finalAmount } = calculateAmounts(
+                    item,
+                    !!item.memberPhone
+                  );
                   return (
                     <tr key={i}>
                       <td>{item.date}</td>
@@ -208,21 +215,44 @@ export default function DailySaleReport() {
                           ? `${item.discountValue ?? 0}%`
                           : item.discountType === "Cashback"
                           ? `${(item.discountValue ?? 0).toLocaleString()} Ks`
-                          : "0"}
+                          : "-"}
                       </td>
                       <td>{item.memberPhone ? "10%" : "-"}</td>
-                      <td>{item.couponAmount ? `-${item.couponAmount}` : "-"}</td>
-                      <td className="font-semibold">
-                        {(finalAmount ?? 0).toLocaleString()} Ks
-                      </td>
-                      <td>{item.couponCode || "-"}</td>
+                      <td></td>
+                      <td>{finalAmount.toLocaleString()} Ks</td>
+                      <td></td>
                       <td>{item.vrNo || vrNo}</td>
                       <td>{item.payment || "-"}</td>
+                      <td>{item.note || "-"}</td>
                     </tr>
                   );
                 })}
+
+                {/* 🧾 Coupon Info */}
+                {couponAmt > 0 && (
+                  <tr className="text-sm italic text-gray-600">
+                    <td colSpan="17" className="text-right pr-4">
+                      Coupon Code - {couponCode} | Coupon Amt -{" "}
+                      {couponAmt.toLocaleString()} Ks
+                    </td>
+                  </tr>
+                )}
+
+                {/* 🚚 Delivery & Address */}
+                <tr className="text-sm text-gray-700">
+                  <td colSpan="17" className="pl-4 py-1">
+                    <strong>🚚 Delivery Charge:</strong>{" "}
+                    {deliveryCharge
+                      ? deliveryCharge.toLocaleString() + " Ks"
+                      : "0 Ks"}{" "}
+                    {" | "}
+                    <strong>🏠 Address:</strong> {address}
+                  </td>
+                </tr>
+
+                {/* Voucher Total */}
                 <tr className="bg-gray-50 font-bold">
-                  <td colSpan="16" className="text-right p-2">
+                  <td colSpan="17" className="text-right p-2">
                     Voucher Total ({vrNo}): {vrTotal.toLocaleString()} Ks
                   </td>
                 </tr>
@@ -230,12 +260,13 @@ export default function DailySaleReport() {
             );
           })}
         </tbody>
-        <tfoot>
+
+        <tfoot className="bg-gray-100 font-bold">
           <tr>
-            <td colSpan="15" className="text-right font-bold">
+            <td colSpan="16" className="text-right">
               OVERALL TOTAL:
             </td>
-            <td className="font-bold">{overall.toLocaleString()} Ks</td>
+            <td>{overall.toLocaleString()} Ks</td>
           </tr>
         </tfoot>
       </table>

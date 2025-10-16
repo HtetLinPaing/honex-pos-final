@@ -7,7 +7,7 @@ import {
   saveProductsToDB,
 } from "../localdb";
 import { db } from "../firebase";
-import { ref, runTransaction } from "firebase/database";
+import { ref, runTransaction, get, set } from "firebase/database";
 import "./SaleReturnPage.css";
 
 export default function SaleReturnPage() {
@@ -19,20 +19,20 @@ export default function SaleReturnPage() {
   const [diffAmount, setDiffAmount] = useState(0);
   const [payment, setPayment] = useState("No");
   const [products, setProducts] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // Load products + voucher no
+  // 🟢 Load products + voucher no
   useEffect(() => {
     if (!currentShop) return;
     (async () => {
       const next = await getNextReturnVoucherNo(currentShop.username);
       setVoucherNo(next);
-
       const prods = await getProductsFromDB(currentShop.username);
       setProducts(prods || {});
     })();
   }, [currentShop]);
 
-  // Add row
+  // ➕ Add row
   const addRow = (type) => {
     const row = {
       barcode: "",
@@ -45,11 +45,11 @@ export default function SaleReturnPage() {
       note: "",
       amount: 0,
     };
-    if (type === "in") setInItems([...inItems, row]);
-    else setOutItems([...outItems, row]);
+    if (type === "in") setInItems((prev) => [...prev, row]);
+    else setOutItems((prev) => [...prev, row]);
   };
 
-  // Delete row + recalc
+  // ❌ Delete row
   const deleteRow = (type, idx) => {
     if (type === "in") {
       const arr = inItems.filter((_, i) => i !== idx);
@@ -62,165 +62,109 @@ export default function SaleReturnPage() {
     }
   };
 
-  // Recalculate total diff
+  // 🧮 Calculate total difference
   const recalcDiff = (inArr, outArr) => {
     const inTotal = inArr.reduce((s, i) => s + i.amount, 0);
     const outTotal = outArr.reduce((s, i) => s + i.amount, 0);
     setDiffAmount(inTotal - outTotal);
   };
 
-  // Update row
- // ✅ Fix updateRow for barcode parsing
-const updateRow = (type, idx, field, val) => {
-  const arr = type === "in" ? [...inItems] : [...outItems];
-  arr[idx][field] = val;
+  // ✏️ Update row data
+  const updateRow = (type, idx, field, val) => {
+    const arr = type === "in" ? [...inItems] : [...outItems];
+    arr[idx][field] = val;
 
-  // ✅ Qty check for OUT → must be >= 1
-  if (type === "out" && field === "qty") {
-    if (val <= 0) {
-      alert("⚠ OUT Qty must be at least 1");
-      arr[idx].qty = 1;
-    }
-  }
-
-  // ✅ Handle barcode parsing (IN + OUT)
-  if (field === "barcode" && val) {
-    const input = val.trim();
-    let code = "";
-    let color = "";
-    let size = "";
-    let product = null;
-
-    // 1️⃣ Hangten case → digit only & length >= 16
-    if (/^[0-9-]+$/.test(input) && input.length >= 16) {
-      code = input.substring(0, 16);
-      product = products[code];
-    } else {
-      // 2️⃣ Prettyfit case
-      const parts = input.split(" ");
-      if (parts.length >= 3) {
-        code = parts[0];
-        size = parts[parts.length - 1];
-        color = parts.slice(1, -1).join(" ");
-      } else {
-        const match = input.match(/^([A-Za-z0-9-]+)\s*([A-Za-z]+)\s*(\d+)$/);
-        if (match) {
-          code = match[1];
-          color = match[2];
-          size = match[3];
-        }
-      }
-      product = products[code];
-    }
-
-    if (!product) {
-      alert(`❌ Barcode ${input} not found in inventory`);
-      arr[idx].price = 0;
-    } else {
+    if (field === "barcode" && val) {
+      const code = val.trim();
       arr[idx].barcode = code;
-      arr[idx].price = product.price || 0;
 
-      // ✅ Auto-fill color & size (OUT only)
-      if (type === "out") {
-        if (color && product.colors[color]) {
-          arr[idx].color = color;
-          if (size && product.colors[color].sizes[size]) {
-            arr[idx].size = size;
-          } else {
-            arr[idx].size =
-              Object.keys(product.colors[color].sizes || {})[0] || "";
-          }
-        } else {
-          const firstColor = Object.keys(product.colors || {})[0] || "";
-          arr[idx].color = firstColor;
-          arr[idx].size =
-            firstColor &&
-            Object.keys(product.colors[firstColor].sizes || {})[0];
-        }
+      if (products[code]) {
+        arr[idx].price = products[code].price || 0;
+        arr[idx].color = "";
+        arr[idx].size = "";
+      } else {
+        alert(`❌ Barcode ${code} not found in inventory`);
+        arr[idx].price = 0;
       }
     }
-  }
 
-  // ✅ recalc amount
-  const base = arr[idx].qty * arr[idx].price;
-  if (arr[idx].discountType === "%")
-    arr[idx].amount = base - (base * (arr[idx].discountValue || 0)) / 100;
-  else arr[idx].amount = base - (arr[idx].discountValue || 0);
+    if (field === "color") {
+      const code = arr[idx].barcode;
+      const color = val;
+      if (products[code] && products[code].colors[color]) {
+        const firstSize =
+          Object.keys(products[code].colors[color].sizes || {})[0] || "";
+        arr[idx].size = firstSize;
+      }
+    }
 
-  if (type === "in") {
-    setInItems(arr);
-    recalcDiff(arr, outItems);
-  } else {
-    setOutItems(arr);
-    recalcDiff(inItems, arr);
-  }
-};
+    const base = arr[idx].qty * arr[idx].price;
+    if (arr[idx].discountType === "%")
+      arr[idx].amount = base - (base * (arr[idx].discountValue || 0)) / 100;
+    else arr[idx].amount = base - (arr[idx].discountValue || 0);
 
+    if (type === "in") {
+      setInItems(arr);
+      recalcDiff(arr, outItems);
+    } else {
+      setOutItems(arr);
+      recalcDiff(inItems, arr);
+    }
+  };
 
-
-  // ✅ Real-time Inventory Update
+  // 🔄 Update inventory (safe + Firebase + Local)
   const updateInventory = async (type, items) => {
     let updatedProducts = { ...products };
 
     for (const it of items) {
       const code = it.barcode.trim();
-      if (!updatedProducts[code]) {
-        if (type === "out") {
-          alert(`❌ ${code} not found in inventory`);
-          return false;
-        }
-        updatedProducts[code] = { price: it.price || 0, colors: {} };
-      }
+      const color = it.color;
+      const size = it.size;
+      const qty = Number(it.qty || 0);
+      if (!code || !color || !size || qty <= 0) continue;
 
-      if (!updatedProducts[code].colors[it.color]) {
-        if (type === "out") {
-          alert(`❌ ${code} - Color ${it.color} not found`);
-          return false;
-        }
-        updatedProducts[code].colors[it.color] = { sizes: {} };
-      }
+      const stockRef = ref(
+        db,
+        `shops/${currentShop.username}/products/${code}/colors/${color}/sizes/${size}/pcs`
+      );
 
-      if (!updatedProducts[code].colors[it.color].sizes[it.size]) {
-        if (type === "out") {
-          alert(`❌ ${code} - ${it.color} - Size ${it.size} not available`);
-          return false;
-        }
-        updatedProducts[code].colors[it.color].sizes[it.size] = { pcs: 0 };
-      }
-
-      let currentStock =
-        updatedProducts[code].colors[it.color].sizes[it.size].pcs || 0;
-
-      if (type === "in") {
-        updatedProducts[code].colors[it.color].sizes[it.size].pcs =
-          currentStock + it.qty;
-      } else {
-        if (currentStock < it.qty) {
-          alert(
-            `❌ ${code} - ${it.color} - ${it.size} has only ${currentStock} pcs. Cannot OUT ${it.qty}.`
-          );
-          return false;
-        }
-        updatedProducts[code].colors[it.color].sizes[it.size].pcs =
-          currentStock - it.qty;
-      }
-
-      // ✅ Firebase stock update
       try {
-        const stockRef = ref(
-          db,
-          `shops/${currentShop.username}/products/${code}/colors/${it.color}/sizes/${it.size}/pcs`
-        );
-        await runTransaction(stockRef, (cur) => {
-          if (type === "in") return (cur || 0) + it.qty;
-          if ((cur || 0) < it.qty) {
-            throw new Error("Not enough stock in Firebase");
+        // 🟩 Ensure Firebase node exists
+        const snap = await get(stockRef);
+        if (!snap.exists()) {
+          await set(stockRef, 0);
+        }
+
+        // 🟩 Safe transaction
+        const result = await runTransaction(stockRef, (cur) => {
+          const currentStock = Number(cur);
+          const safeStock = isNaN(currentStock) ? 0 : currentStock;
+
+          if (type === "in") {
+            return safeStock + qty;
+          } else {
+            if (safeStock < qty) {
+              throw new Error(
+                `❌ Not enough stock for ${code} - ${color} - ${size} (have ${safeStock}, need ${qty})`
+              );
+            }
+            return safeStock - qty;
           }
-          return (cur || 0) - it.qty;
         });
+
+        const newStock = result.snapshot.val();
+
+        if (!updatedProducts[code])
+          updatedProducts[code] = { price: it.price || 0, colors: {} };
+        if (!updatedProducts[code].colors[color])
+          updatedProducts[code].colors[color] = { sizes: {} };
+        if (!updatedProducts[code].colors[color].sizes[size])
+          updatedProducts[code].colors[color].sizes[size] = { pcs: 0 };
+
+        updatedProducts[code].colors[color].sizes[size].pcs = newStock;
       } catch (err) {
-        console.error("❌ Firebase stock update failed:", err);
-        alert("Firebase stock update failed: " + err.message);
+        console.error("❌ Stock update failed:", err);
+        alert(err.message);
         return false;
       }
     }
@@ -230,51 +174,59 @@ const updateRow = (type, idx, field, val) => {
     return true;
   };
 
-  // Submit
+  // 💾 Submit
   const handleSubmit = async () => {
-    const missingVocNo = inItems.some(
-      (it) => !it.note || it.note.trim() === ""
-    );
-    if (missingVocNo) {
-      alert("⚠ Voc No is required in all IN rows before submitting.");
-      return;
+    try {
+      setLoading(true);
+      const outOk = await updateInventory("out", outItems);
+      if (!outOk) return;
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      const inOk = await updateInventory("in", inItems);
+      if (!inOk) return;
+
+      const log = {
+        voucherNo,
+        date: new Date().toISOString(),
+        inItems,
+        outItems,
+        diffAmount,
+        payment,
+        shop: currentShop.username,
+        note:
+          [...inItems, ...outItems]
+            .map((i) => i.note)
+            .filter(Boolean)
+            .join(" | ") || "",
+      };
+
+      await saveReturn(currentShop.username, log);
+      alert(`✅ Sale Return Saved! Voucher: ${voucherNo}`);
+
+      // reset
+      setInItems([]);
+      setOutItems([]);
+      setDiffAmount(0);
+      setPayment("No");
+
+      const next = await getNextReturnVoucherNo(currentShop.username);
+      setVoucherNo(next);
+    } catch (err) {
+      alert("❌ Something went wrong: " + err.message);
+    } finally {
+      setLoading(false);
     }
-
-    const outOk = await updateInventory("out", outItems);
-    if (!outOk) return;
-
-    await updateInventory("in", inItems);
-
-    const log = {
-      voucherNo,
-      date: new Date().toISOString(),
-      inItems,
-      outItems,
-      diffAmount,
-      payment,
-      shop: currentShop.username,
-    };
-
-    await saveReturn(currentShop.username, log);
-
-    alert(`✅ Sale Return Saved! Voucher: ${voucherNo}`);
-
-    setInItems([]);
-    setOutItems([]);
-    setDiffAmount(0);
-    setPayment("No");
-
-    const next = await getNextReturnVoucherNo(currentShop.username);
-    setVoucherNo(next);
   };
 
-  // Render OUT selects
+  // Select render helpers
   const renderColorSelect = (it, idx, type) => (
     <select
       className="small"
       value={it.color}
       onChange={(e) => updateRow(type, idx, "color", e.target.value)}
     >
+      <option value="">Select</option>
       {products[it.barcode] &&
         Object.keys(products[it.barcode].colors || {}).map((c) => (
           <option key={c} value={c}>
@@ -290,6 +242,7 @@ const updateRow = (type, idx, field, val) => {
       value={it.size}
       onChange={(e) => updateRow(type, idx, "size", e.target.value)}
     >
+      <option value="">Select</option>
       {products[it.barcode] &&
         products[it.barcode].colors[it.color] &&
         Object.keys(products[it.barcode].colors[it.color].sizes || {}).map(
@@ -302,10 +255,16 @@ const updateRow = (type, idx, field, val) => {
     </select>
   );
 
-  // ====== UI ======
   return (
     <div className="sale-return">
       <h2>🔄 Sale Return</h2>
+
+      {loading && (
+        <div className="loading-overlay">
+          <div className="spinner"></div>
+          <p>Processing... Please wait</p>
+        </div>
+      )}
 
       <div className="mb-4">
         <label>Voucher No: </label>
@@ -328,7 +287,7 @@ const updateRow = (type, idx, field, val) => {
               <th>Price</th>
               <th>Discount</th>
               <th>Amount</th>
-              <th>Voc No</th>
+              <th>Note</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -344,24 +303,8 @@ const updateRow = (type, idx, field, val) => {
                     }
                   />
                 </td>
-                <td>
-                  <input
-                    className="small"
-                    value={it.color}
-                    onChange={(e) =>
-                      updateRow("in", idx, "color", e.target.value)
-                    }
-                  />
-                </td>
-                <td>
-                  <input
-                    className="small"
-                    value={it.size}
-                    onChange={(e) =>
-                      updateRow("in", idx, "size", e.target.value)
-                    }
-                  />
-                </td>
+                <td>{renderColorSelect(it, idx, "in")}</td>
+                <td>{renderSizeSelect(it, idx, "in")}</td>
                 <td>
                   <input
                     type="number"
@@ -373,12 +316,7 @@ const updateRow = (type, idx, field, val) => {
                   />
                 </td>
                 <td>
-                  <input
-                    type="number"
-                    className="small no-spin"
-                    value={it.price}
-                    readOnly
-                  />
+                  <input type="number" className="small" value={it.price} readOnly />
                 </td>
                 <td>
                   <select
@@ -393,7 +331,7 @@ const updateRow = (type, idx, field, val) => {
                   </select>
                   <input
                     type="number"
-                    className="small no-spin"
+                    className="small"
                     value={it.discountValue}
                     onChange={(e) =>
                       updateRow("in", idx, "discountValue", Number(e.target.value))
@@ -405,9 +343,7 @@ const updateRow = (type, idx, field, val) => {
                   <input
                     className="small"
                     value={it.note}
-                    onChange={(e) =>
-                      updateRow("in", idx, "note", e.target.value)
-                    }
+                    onChange={(e) => updateRow("in", idx, "note", e.target.value)}
                   />
                 </td>
                 <td>
@@ -466,12 +402,7 @@ const updateRow = (type, idx, field, val) => {
                   />
                 </td>
                 <td>
-                  <input
-                    type="number"
-                    className="small no-spin"
-                    value={it.price}
-                    readOnly
-                  />
+                  <input type="number" className="small" value={it.price} readOnly />
                 </td>
                 <td>
                   <select
@@ -486,7 +417,7 @@ const updateRow = (type, idx, field, val) => {
                   </select>
                   <input
                     type="number"
-                    className="small no-spin"
+                    className="small"
                     value={it.discountValue}
                     onChange={(e) =>
                       updateRow("out", idx, "discountValue", Number(e.target.value))
@@ -502,10 +433,7 @@ const updateRow = (type, idx, field, val) => {
                   />
                 </td>
                 <td>
-                  <button
-                    className="del-btn"
-                    onClick={() => deleteRow("out", idx)}
-                  >
+                  <button className="del-btn" onClick={() => deleteRow("out", idx)}>
                     ✖
                   </button>
                 </td>
@@ -539,7 +467,9 @@ const updateRow = (type, idx, field, val) => {
           handleSubmit();
         }}
       >
-        <button type="submit">Submit</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Submit"}
+        </button>
       </form>
     </div>
   );

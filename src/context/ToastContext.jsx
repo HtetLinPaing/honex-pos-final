@@ -12,7 +12,7 @@ export function ToastProvider({ children }) {
     // 10s ပြပြီး auto dismiss
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    }, 1000);
   };
 
   return (
