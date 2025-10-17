@@ -250,96 +250,106 @@ function POSAppInner() {
   }, [currentShop]);
 
   // ===================== BARCODE =====================
-  const handleBarcodeChange = (val) => {
-    setBarcode(val);
-    if (scanTimeout.current) clearTimeout(scanTimeout.current);
-    scanTimeout.current = setTimeout(() => handleScan(val), 250);
-  };
+ const handleBarcodeChange = (val) => {
+  setBarcode(val);
+};
 
-  const handleScan = async (rawCode) => {
-    if (!rawCode) return;
-    const input = rawCode.trim();
-    const products = await getProductsFromDB(currentShop.username);
-
-    let code = "";
-    let color = "";
-    let size = "";
-    let data = null;
-
-    // 1️⃣ Hangten case → digit only & length >= 16
-    if (/^[0-9-]+$/.test(input) && input.length >= 16) {
-      code = input.substring(0, 16);
-      data = products?.[code];
-
-      if (!data) {
-        addToast("Hangten barcode not found", "warning");
-        setBarcode("");
-        return;
-      }
-
-      const colors = Object.keys(data.colors || {});
-      const defaultColor = colors[0] || "Default";
-      const sizes = data.colors?.[defaultColor]?.sizes || {};
-      const availableSizes = Object.keys(sizes);
-      const defaultSize = availableSizes[0] || "";
-      const stockQty = defaultSize ? sizes[defaultSize].pcs : 0;
-
-      const newItem = {
-        code,
-        colors,
-        color: defaultColor,
-        size: defaultSize,
-        availableSizes,
-        qty: 1,
-        price: data.price || 0,
-        discountType: "%",
-        discountValue: 0,
-        stock: data.colors,
-        uiStock: stockQty - 1,
-        finalAmount: data.price || 0,
-        note: "",
-      };
-      setItems((prev) => [...prev, newItem]);
+// ✅ Press Enter → auto add item (manual or scanner)
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && document.activeElement === inputRef.current) {
+      e.preventDefault();
+      const val = barcode.trim();
+      if (val) handleScan(val);
     }
+  };
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [barcode]);
 
-    // 2️⃣ Prettyfit case → code + color + size
-    // 2️⃣ Prettyfit case → auto + manual support
-else {
-  // Examples supported:
-  //  • "3347H Brown 36"
-  //  • "R-2234 Red36"
-  //  • "3348R"
-  //  • "3348-R"
-  //  • "R3348"
-  const inputClean = input.trim();
+
+ const handleScan = async (rawCode) => {
+  if (!rawCode) return;
+  const input = rawCode.trim();
+  const products = await getProductsFromDB(currentShop.username);
+
   let code = "";
   let color = "";
   let size = "";
+  let data = null;
 
-  // 1️⃣ Full format (code + color + size)
+  // ✅ Hangten format (exp- or numeric)
+ // ✅ Hangten Case: exp- or digit-only
+if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
+  const cleanInput = input.replace(/^exp-/i, ""); // remove exp- prefix
+  const parts = cleanInput.split("-");
+  
+  // ✅ support 4 parts (code + color + design + size)
+  if (parts.length >= 4) {
+    code = `${parts[0]}-${parts[1]}-${parts[2]}-${parts[3]}`;
+  } else if (parts.length >= 3) {
+    code = `${parts[0]}-${parts[1]}-${parts[2]}`;
+  } else {
+    code = cleanInput;
+  }
+
+  data = products?.[code];
+  if (!data) {
+    addToast(`❌ Hangten product not found: ${code}`, "warning");
+    setBarcode("");
+    return;
+  }
+
+  const colors = Object.keys(data.colors || {});
+  const defaultColor = colors[0] || "Default";
+  const sizes = data.colors?.[defaultColor]?.sizes || {};
+  const availableSizes = Object.keys(sizes);
+  const defaultSize = availableSizes[0] || "";
+  const stockQty = sizes[defaultSize]?.pcs || 0;
+
+  const newItem = {
+    code,
+    colors,
+    color: defaultColor,
+    size: defaultSize,
+    availableSizes,
+    qty: 1,
+    price: data.price || 0,
+    discountType: "%",
+    discountValue: 0,
+    stock: data.colors,
+    uiStock: stockQty - 1,
+    finalAmount: data.price || 0,
+    note: "",
+  };
+  setItems((prev) => [...prev, newItem]);
+  setBarcode("");
+  inputRef.current?.focus();
+  return;
+}
+
+
+  // ✅ Prettyfit format
+  const inputClean = input.trim();
   const parts = inputClean.split(" ");
   if (parts.length >= 3) {
     code = parts[0];
     size = parts[parts.length - 1];
     color = parts.slice(1, -1).join(" ");
-  } 
-  else {
-    // 2️⃣ Compact form e.g. "3347HBrown36", "R-2234Red36"
+  } else {
     const matchFull = inputClean.match(/^([\w-]+)\s*([A-Za-z]+)\s*(\d{1,2})$/);
     if (matchFull) {
       code = matchFull[1];
       color = matchFull[2];
       size = matchFull[3];
-    } 
-    else {
-      // 3️⃣ Manual simple code only (no color/size)
+    } else {
       code = inputClean;
     }
   }
 
-  const data = products?.[code];
+  data = products?.[code];
   if (!data) {
-    addToast(`❌ Product code not found: ${code}`, "warning");
+    addToast(`❌ Product not found: ${code}`, "warning");
     setBarcode("");
     return;
   }
@@ -349,11 +359,9 @@ else {
   const sizesObj = data.colors?.[firstColor]?.sizes || {};
   const firstSize = Object.keys(sizesObj)[0] || "";
 
-  // Manual only → pick first color/size automatically
   if (!color) color = firstColor;
   if (!size) size = firstSize;
 
-  // Validate color
   const matchedColor = colors.find(
     (c) =>
       c.toLowerCase().replace(/\s+/g, "") ===
@@ -365,7 +373,6 @@ else {
     return;
   }
 
-  // Validate size
   const availableSizes = data.colors[matchedColor]?.sizes || {};
   const matchedSize =
     Object.keys(availableSizes).find((s) => s == size) || firstSize;
@@ -387,17 +394,10 @@ else {
   };
 
   setItems((prev) => [...prev, newItem]);
-
-  // Reset input
   setBarcode("");
   inputRef.current?.focus();
-}
+};
 
-
-    // reset input
-    setBarcode("");
-    inputRef.current?.focus();
-  };
 
   // ===================== ITEM CHANGE =====================
   const handleChangeItem = (index, field, value) => {
@@ -1158,42 +1158,56 @@ else {
 
       {/* PAYMENT DIALOG */}
       {showDialog && (
-        <div className="modal-overlay">
-          <div className="modal-box">
-            <h3>Payment</h3>
-            <div>
-              <label>Grand Amount</label>
-              <input type="number" value={finalTotal} readOnly />
-            </div>
-            <div>
-              <label>Cash Paid</label>
-              <input
-                type="number"
-                value={cashPaid}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCashPaid(val);
-                  setChange((Number(val) || 0) - finalTotal);
-                }}
-              />
-            </div>
-            <div>
-              <label>Change</label>
-              <input type="number" value={change} readOnly />
-            </div>
-            <div className="modal-actions">
-              <button onClick={() => setShowDialog(false)}>Cancel</button>
-              <button
-                className="save-btn"
-                onClick={handleConfirmPrint} // This triggers Save & Print
-                disabled={submitting}
-              >
-                {submitting ? <span className="loader"></span> : "Save & Print"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+  <div className="modal-overlay">
+    <div className="modal-box">
+      <h3>Payment</h3>
+
+      {/* ✅ Grand Total includes Delivery Charge */}
+      <div>
+        <label>Grand Amount</label>
+        <input
+          type="number"
+          value={finalTotal + deliveryCharge}
+          readOnly
+        />
+      </div>
+
+      {/* ✅ Cash Paid */}
+      <div>
+        <label>Cash Paid</label>
+        <input
+          type="number"
+          value={cashPaid}
+          onChange={(e) => {
+            const val = e.target.value;
+            setCashPaid(val);
+            // ✅ subtract delivery charge also
+            setChange((Number(val) || 0) - (finalTotal + deliveryCharge));
+          }}
+        />
+      </div>
+
+      {/* ✅ Change */}
+      <div>
+        <label>Change</label>
+        <input type="number" value={change} readOnly />
+      </div>
+
+      {/* ✅ Buttons */}
+      <div className="modal-actions">
+        <button onClick={() => setShowDialog(false)}>Cancel</button>
+        <button
+          className="save-btn"
+          onClick={handleConfirmPrint} // This triggers Save & Print
+          disabled={submitting}
+        >
+          {submitting ? <span className="loader"></span> : "Save & Print"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {submitting && (
         <div className="loading-overlay">

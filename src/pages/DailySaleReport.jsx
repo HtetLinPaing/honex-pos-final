@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import localforage from "localforage";
 import { useShop } from "../context/ShopContext";
+import { syncSalesFromFirebase } from "../localdb";
+
 
 // 🧮 Helper: calculate each item amount (excluding coupon)
 function calculateAmounts(item, isMember) {
@@ -46,13 +48,29 @@ export default function DailySaleReport() {
   const [sales, setSales] = useState([]);
   const [saleRange, setSaleRange] = useState({ from: null, to: null });
 
-  useEffect(() => {
-    const fetchSales = async () => {
-      if (!currentShop) return;
+useEffect(() => {
+  const fetchSales = async () => {
+    if (!currentShop) return;
 
-      const key = `${currentShop.username}_sales`;
+    const shopId = currentShop.username;
+    const key = `${shopId}_sales`;
+
+    try {
+      // 🟢 Step 1 — Firebase မှာရှိတဲ့ Sale Data ကို Local ထဲ Auto Sync
+      if (navigator.onLine) {
+        try {
+          const { syncSalesFromFirebase } = await import("../localdb");
+          const result = await syncSalesFromFirebase(shopId);
+          console.log("🔄 Sync Result:", result.message);
+        } catch (syncErr) {
+          console.error("❌ Failed to sync sales from Firebase:", syncErr);
+        }
+      }
+
+      // 🟢 Step 2 — LocalForage ထဲက Sales တွေ ဖတ်
       const allSales = (await localforage.getItem(key)) || [];
 
+      // 🟢 Step 3 — ရက်ဖြင့် Filter လုပ်
       const filteredSales = allSales.filter((s) => {
         if (!s?.dateTime) return false;
         const saleDate = new Date(s.dateTime);
@@ -67,6 +85,7 @@ export default function DailySaleReport() {
         return;
       }
 
+      // 🟢 Step 4 — Date Range & Cache Update
       const dates = filteredSales.map((s) => new Date(s.dateTime));
       setSaleRange({
         from: formatDateDMY(new Date(Math.min(...dates))),
@@ -75,13 +94,19 @@ export default function DailySaleReport() {
 
       setSales(filteredSales);
       await localforage.setItem(`${key}_cache`, filteredSales);
-    };
+    } catch (err) {
+      console.error("❌ Error fetching sales:", err);
+    }
+  };
 
-    fetchSales();
-    const onSalesUpdate = () => fetchSales();
-    window.addEventListener("sales-updated", onSalesUpdate);
-    return () => window.removeEventListener("sales-updated", onSalesUpdate);
-  }, [startDate, endDate, currentShop]);
+  fetchSales();
+
+  // 🟢 Auto Refresh on Sale Update Event
+  const onSalesUpdate = () => fetchSales();
+  window.addEventListener("sales-updated", onSalesUpdate);
+  return () => window.removeEventListener("sales-updated", onSalesUpdate);
+}, [startDate, endDate, currentShop]);
+
 
   // 🧾 Group by voucher number
   const grouped = {};
