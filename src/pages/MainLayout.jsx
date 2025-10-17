@@ -166,7 +166,7 @@ export default function MainLayout() {
         }}
       >
         <marquee behavior="scroll" direction="left" scrollamount="6">
-          Testing Testing
+          ကျေးဇူးပါခင်ဗျ
         </marquee>
       </footer>
     </div>
