@@ -16,51 +16,47 @@ export default function MainLayout() {
 
   const db = getDatabase();
 
+  // ✅ Grouped shop definitions
   const SHOP_GROUPS = {
-    "honexpos2025_STPF": ["STHT", "STPF"],
-    "honexpos2025_DNG": ["DNGHT", "DNGPF"],
-    "honexpos2025_OS": ["OSHT", "OSPF"],
+    honexpos2025_STPF: ["STHT", "STPF"],
+    honexpos2025_DNG: ["DNGHT", "DNGPF"],
+    honexpos2025_OS: ["OSHT", "OSPF"],
   };
 
+  // ✅ Load all shop data
   useEffect(() => {
     const shopRef = ref(db, "users");
     return onValue(shopRef, (snap) => {
-      if (snap.exists()) {
-        const data = snap.val();
-        const mapping = {};
-        Object.entries(data).forEach(([key, s]) => {
-          mapping[s.username] = {
-            username: s.username,
-            shopName: s.shopName || s.username,
-            password: s.password,
-            shortName: s.shortName,
-            branches: s.branches || s.branch || null,
-            sharedGroup: s.sharedGroup || null,
-          };
-        });
-        setShopMap(mapping);
-      } else {
-        setShopMap({});
-      }
+      if (!snap.exists()) return setShopMap({});
+      const data = snap.val();
+      const mapping = {};
+      Object.entries(data).forEach(([_, s]) => {
+        if (!s.username) return;
+        mapping[s.username] = {
+          username: s.username,
+          shopName: s.shopName || s.username,
+          password: s.password || "",
+          shortName: s.shortName || "",
+          branches: s.branches || s.branch || null,
+          sharedGroup: s.sharedGroup || null,
+        };
+      });
+      setShopMap(mapping);
     });
   }, [db]);
 
+  // ✅ Available shops for switching
   useEffect(() => {
-    if (!currentShop) {
-      setAvailableShops([]);
-      return;
-    }
+    if (!currentShop?.username) return setAvailableShops([]);
     const groupEntry = Object.values(SHOP_GROUPS).find((arr) =>
       arr.includes(currentShop.username)
     );
-    if (!groupEntry) {
-      setAvailableShops([]);
-      return;
-    }
+    if (!groupEntry) return setAvailableShops([]);
     const shops = groupEntry.map((uname) => shopMap[uname]).filter(Boolean);
     setAvailableShops(shops);
   }, [currentShop, shopMap]);
 
+  // ✅ Track unread messages
   useEffect(() => {
     if (!currentShop?.username) {
       setUnreadCount(0);
@@ -69,14 +65,10 @@ export default function MainLayout() {
     }
     const chatRef = ref(db, "chats");
     return onValue(chatRef, (snap) => {
-      if (!snap.exists()) {
-        setUnreadCount(0);
-        setUnreadShops([]);
-        return;
-      }
+      if (!snap.exists()) return setUnreadCount(0);
+      const data = snap.val();
       let count = 0;
       const senders = new Set();
-      const data = snap.val();
       Object.values(data).forEach((m) => {
         if (m.to === currentShop.username && !m.read) {
           count++;
@@ -88,13 +80,13 @@ export default function MainLayout() {
     });
   }, [db, currentShop]);
 
+  // ✅ Shop switch
   const handleShopSwitch = (newUsername) => {
     if (!newUsername || !shopMap[newUsername]) return;
-    const next = shopMap[newUsername];
-    setCurrentShop(next);
+    setCurrentShop(shopMap[newUsername]);
   };
 
-  // ✅ allowed shops for PurchasePage
+  // ✅ Purchase access limitation
   const PURCHASE_ALLOWED = ["STHT", "STPF", "DNGHT", "DNGPF"];
 
   return (
@@ -109,15 +101,17 @@ export default function MainLayout() {
         <Link to="/salereturn/history">Sale Return History</Link>
         <Link to="/lowstock">Low Stock</Link>
 
-        {/* ✅ Purchase Page ကို STHT/STPF/DNGHT/DNGPF ပဲ ပြမယ် */}
+        {/* ✅ Purchase only visible to allowed shops */}
         {PURCHASE_ALLOWED.includes(currentShop?.username) && (
           <Link to="/purchase">Purchase</Link>
         )}
 
         <Link to="/transfer/noti" className="menu noti-badge">
-          🔔 {pendingCount > 0 && <span className="noti-dot">{pendingCount}</span>}
+          🔔
+          {pendingCount > 0 && <span className="noti-dot">{pendingCount}</span>}
         </Link>
 
+        {/* ✅ Shop switcher */}
         {availableShops.length > 0 && (
           <select
             style={{
@@ -143,6 +137,7 @@ export default function MainLayout() {
         <Outlet />
       </main>
 
+      {/* ✅ Chat icon + popup */}
       <MessageIcon
         onClick={() => setChatOpen(!chatOpen)}
         unreadCount={unreadCount}
@@ -150,6 +145,7 @@ export default function MainLayout() {
       />
       {chatOpen && <MessagePopup onClose={() => setChatOpen(false)} />}
 
+      {/* ✅ Footer marquee */}
       <footer
         style={{
           background: "red",
