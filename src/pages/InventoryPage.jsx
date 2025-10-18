@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { ref, onValue } from "firebase/database";
 import { getProductsFromDB, saveProductsToDB } from "../localdb";
-import { Link } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
 import "../index.css";
 
 function InventoryPage() {
-  const { currentShop, pendingCount } = useShop();
+  const { currentShop } = useShop();
 
   const [products, setProducts] = useState([]);
+  const [filtered, setFiltered] = useState([]); // ✅ filtered list
+  const [searchTerm, setSearchTerm] = useState(""); // ✅ search input
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // 🌐 Track internet status
@@ -28,86 +29,109 @@ function InventoryPage() {
   useEffect(() => {
     if (!currentShop) return;
 
-    if (isOnline) {
-      // ✅ ONLINE → Firebase Live Data
-      const inventoryRef = ref(db, `shops/${currentShop.username}/products`);
+    const processData = (data) => {
+      const rows = [];
+      Object.entries(data).forEach(([code, product]) => {
+        Object.entries(product.colors || {}).forEach(([color, cData]) => {
+          Object.entries(cData.sizes || {}).forEach(([size, sData]) => {
+            rows.push({
+              code,
+              color,
+              size,
+              qty: sData.pcs || 0,
+              price: product.price || 0,
+            });
+          });
+        });
+      });
+      setProducts(rows);
+      setFiltered(rows); // initialize filtered list
+    };
 
+    if (isOnline) {
+      const inventoryRef = ref(db, `shops/${currentShop.username}/products`);
       const unsubscribe = onValue(inventoryRef, async (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
-          let rows = [];
-
-          // flatten structure: code → colors → sizes
-          Object.entries(data).forEach(([code, product]) => {
-            Object.entries(product.colors || {}).forEach(([color, cData]) => {
-              Object.entries(cData.sizes || {}).forEach(([size, sData]) => {
-                rows.push({
-                  code,
-                  color,
-                  size,
-                  qty: sData.pcs || 0,
-                  price: product.price || 0,
-                });
-              });
-            });
-          });
-
-          setProducts(rows);
-          // 💾 Save to localDB for offline usage
+          processData(data);
           await saveProductsToDB(currentShop.username, data);
         } else {
           setProducts([]);
+          setFiltered([]);
         }
       });
-
       return () => unsubscribe();
     } else {
-      // 📴 OFFLINE → Load from localDB
       (async () => {
         const localData = await getProductsFromDB(currentShop.username);
         if (localData) {
-          let rows = [];
-          Object.entries(localData).forEach(([code, product]) => {
-            Object.entries(product.colors || {}).forEach(([color, cData]) => {
-              Object.entries(cData.sizes || {}).forEach(([size, sData]) => {
-                rows.push({
-                  code,
-                  color,
-                  size,
-                  qty: sData.pcs || 0,
-                  price: product.price || 0,
-                });
-              });
-            });
-          });
-          setProducts(rows);
+          processData(localData);
         } else {
           setProducts([]);
+          setFiltered([]);
         }
       })();
     }
   }, [currentShop, isOnline]);
 
+  // 🔍 Search Filter Logic
+  useEffect(() => {
+    const lower = searchTerm.toLowerCase();
+    const filteredList = products.filter(
+      (p) =>
+        p.code.toLowerCase().includes(lower) ||
+        p.color.toLowerCase().includes(lower) ||
+        p.size.toLowerCase().includes(lower) ||
+        String(p.price).includes(lower)
+    );
+    setFiltered(filteredList);
+  }, [searchTerm, products]);
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6 flex items-center gap-4">
-        <p>📦 Inventory — {currentShop?.shopName || "No Shop"}</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <h1 className="text-2xl font-bold">
+          📦 Inventory — {currentShop?.shopName || "No Shop"}
+          {!isOnline && (
+            <span className="text-red-500 ml-3">(Offline Mode)</span>
+          )}
+        </h1>
 
-        {products.length > 0 && (
-          <div className="total-box">
-            <div className="label">Total Qty</div>
-            <div className="number">
-              {products.reduce((sum, p) => sum + (p.qty || 0), 0)}
+        {/* ✅ Search Bar */}
+        <input
+          type="text"
+          placeholder="🔍 Search item..."
+          className="search-input"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* ✅ Total Qty */}
+      {filtered.length > 0 && (
+        <div className="total-box mb-4 flex flex-wrap gap-4">
+          {/* ✅ Total Qty */}
+          <div className="flex-1 bg-white p-4 rounded shadow text-center">
+            <div className="label text-gray-600 font-semibold">Total Qty</div>
+            <div className="number text-2xl font-bold text-blue-600">
+              {filtered.reduce((sum, p) => sum + (p.qty || 0), 0)}
             </div>
           </div>
-        )}
 
-        {!isOnline && <span className="text-red-500 ml-4">(Offline Mode)</span>}
-      </h1>
+          {/* ✅ Total Unique Codes */}
+          <div className="flex-1 bg-white p-4 rounded shadow text-center">
+            <div className="label text-gray-600 font-semibold">Total Codes</div>
+            <div className="number text-2xl font-bold text-green-600">
+              {new Set(filtered.map((p) => p.code.trim())).size}
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="table-container">
-        <table className="inventory-table">
-          <thead>
+      {/* ✅ Inventory Table */}
+      <div className="table-container overflow-x-auto bg-white shadow rounded-md">
+        <table className="inventory-table w-full">
+          <thead className="bg-gray-200 text-gray-700">
             <tr>
               <th>Code</th>
               <th>Color</th>
@@ -117,22 +141,21 @@ function InventoryPage() {
             </tr>
           </thead>
           <tbody>
-            {products.length === 0 ? (
+            {filtered.length === 0 ? (
               <tr>
-                <td
-                  colSpan="5"
-                  style={{ textAlign: "center", padding: "12px" }}
-                >
+                <td colSpan="5" className="text-center py-4 text-gray-500">
                   No products found
                 </td>
               </tr>
             ) : (
-              products.map((p, idx) => (
-                <tr key={idx}>
+              filtered.map((p, idx) => (
+                <tr key={idx} className="hover:bg-gray-100">
                   <td>{p.code}</td>
                   <td>{p.color}</td>
                   <td>{p.size}</td>
-                  <td className={p.qty === 0 ? "qty-zero" : "qty-positive"}>
+                  <td
+                    className={p.qty === 0 ? "text-red-500" : "text-green-700"}
+                  >
                     {p.qty}
                   </td>
                   <td className="price">{p.price.toLocaleString()} Ks</td>

@@ -19,9 +19,8 @@ import ShopTransferHistory from "./pages/ShopTransferHistory";
 import LowStockPage from "./pages/LowStockPage";
 import SaleReturnPage from "./pages/SaleReturnPage";
 import SaleReturnHistory from "./pages/SaleReturnHistory";
-const BASE_URL = "https://honexpos-2025-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-
+const BASE_URL =
+  "https://honexpos-2025-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 import {
   getNextVoucherNo,
@@ -250,154 +249,153 @@ function POSAppInner() {
   }, [currentShop]);
 
   // ===================== BARCODE =====================
- const handleBarcodeChange = (val) => {
-  setBarcode(val);
-};
+  const handleBarcodeChange = (val) => {
+    setBarcode(val);
+  };
 
-// ✅ Press Enter → auto add item (manual or scanner)
-useEffect(() => {
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && document.activeElement === inputRef.current) {
-      e.preventDefault();
-      const val = barcode.trim();
-      if (val) handleScan(val);
+  // ✅ Press Enter → auto add item (manual or scanner)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && document.activeElement === inputRef.current) {
+        e.preventDefault();
+        const val = barcode.trim();
+        if (val) handleScan(val);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.rem;
+    oveEventListener("keydown", handleKeyDown);
+  }, [barcode]);
+
+  const handleScan = async (rawCode) => {
+    if (!rawCode) return;
+    const input = rawCode.trim();
+    const products = await getProductsFromDB(currentShop.username);
+
+    let code = "";
+    let color = "";
+    let size = "";
+    let data = null;
+
+    // ✅ Hangten Case: exp- or digit-only
+    if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
+      const cleanInput = input.replace(/^exp-/i, ""); // remove exp- prefix
+      const parts = cleanInput.split("-");
+
+      // ✅ support 4 parts (code + color + design + size)
+      if (parts.length >= 4) {
+        code = `${parts[0]}-${parts[1]}-${parts[2]}-${parts[3]}`;
+      } else if (parts.length >= 3) {
+        code = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        code = cleanInput;
+      }
+
+      data = products?.[code];
+      if (!data) {
+        addToast(`❌ Hangten product not found: ${code}`, "warning");
+        setBarcode("");
+        return;
+      }
+
+      const colors = Object.keys(data.colors || {});
+      const defaultColor = colors[0] || "Default";
+      const sizes = data.colors?.[defaultColor]?.sizes || {};
+      const availableSizes = Object.keys(sizes);
+      const defaultSize = availableSizes[0] || "";
+      const stockQty = sizes[defaultSize]?.pcs || 0;
+
+      const newItem = {
+        code,
+        colors,
+        color: defaultColor,
+        size: defaultSize,
+        availableSizes,
+        qty: 1,
+        price: data.price || 0,
+        discountType: "%",
+        discountValue: 0,
+        stock: data.colors,
+        uiStock: stockQty - 1,
+        finalAmount: data.price || 0,
+        note: "",
+      };
+      setItems((prev) => [...prev, newItem]);
+      setBarcode("");
+      inputRef.current?.focus();
+      return;
     }
-  };
-  window.addEventListener("keydown", handleKeyDown);
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, [barcode]);
 
-
- const handleScan = async (rawCode) => {
-  if (!rawCode) return;
-  const input = rawCode.trim();
-  const products = await getProductsFromDB(currentShop.username);
-
-  let code = "";
-  let color = "";
-  let size = "";
-  let data = null;
-
-  // ✅ Hangten format (exp- or numeric)
- // ✅ Hangten Case: exp- or digit-only
-if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
-  const cleanInput = input.replace(/^exp-/i, ""); // remove exp- prefix
-  const parts = cleanInput.split("-");
-  
-  // ✅ support 4 parts (code + color + design + size)
-  if (parts.length >= 4) {
-    code = `${parts[0]}-${parts[1]}-${parts[2]}-${parts[3]}`;
-  } else if (parts.length >= 3) {
-    code = `${parts[0]}-${parts[1]}-${parts[2]}`;
-  } else {
-    code = cleanInput;
-  }
-
-  data = products?.[code];
-  if (!data) {
-    addToast(`❌ Hangten product not found: ${code}`, "warning");
-    setBarcode("");
-    return;
-  }
-
-  const colors = Object.keys(data.colors || {});
-  const defaultColor = colors[0] || "Default";
-  const sizes = data.colors?.[defaultColor]?.sizes || {};
-  const availableSizes = Object.keys(sizes);
-  const defaultSize = availableSizes[0] || "";
-  const stockQty = sizes[defaultSize]?.pcs || 0;
-
-  const newItem = {
-    code,
-    colors,
-    color: defaultColor,
-    size: defaultSize,
-    availableSizes,
-    qty: 1,
-    price: data.price || 0,
-    discountType: "%",
-    discountValue: 0,
-    stock: data.colors,
-    uiStock: stockQty - 1,
-    finalAmount: data.price || 0,
-    note: "",
-  };
-  setItems((prev) => [...prev, newItem]);
-  setBarcode("");
-  inputRef.current?.focus();
-  return;
-}
-
-
-  // ✅ Prettyfit format
-  const inputClean = input.trim();
-  const parts = inputClean.split(" ");
-  if (parts.length >= 3) {
-    code = parts[0];
-    size = parts[parts.length - 1];
-    color = parts.slice(1, -1).join(" ");
-  } else {
-    const matchFull = inputClean.match(/^([\w-]+)\s*([A-Za-z]+)\s*(\d{1,2})$/);
-    if (matchFull) {
-      code = matchFull[1];
-      color = matchFull[2];
-      size = matchFull[3];
+    // ✅ Prettyfit format
+    const inputClean = input.trim();
+    const parts = inputClean.split(" ");
+    if (parts.length >= 3) {
+      code = parts[0];
+      size = parts[parts.length - 1];
+      color = parts.slice(1, -1).join(" ");
     } else {
-      code = inputClean;
+      const matchFull = inputClean.match(
+        /^([\w-]+)\s*([A-Za-z]+)\s*(\d{1,2})$/
+      );
+      if (matchFull) {
+        code = matchFull[1];
+        color = matchFull[2];
+        size = matchFull[3];
+      } else {
+        code = inputClean;
+      }
     }
-  }
 
-  data = products?.[code];
-  if (!data) {
-    addToast(`❌ Product not found: ${code}`, "warning");
+    data = products?.[code];
+    if (!data) {
+      addToast(`❌ Product not found: ${code}`, "warning");
+      setBarcode("");
+      return;
+    }
+
+    const colors = Object.keys(data.colors || {});
+    const firstColor = colors[0] || "";
+    const sizesObj = data.colors?.[firstColor]?.sizes || {};
+    const firstSize = Object.keys(sizesObj)[0] || "";
+
+    if (!color) color = firstColor;
+    if (!size) size = firstSize;
+
+    const matchedColor = colors.find(
+      (c) =>
+        c.toLowerCase().replace(/\s+/g, "") ===
+        color.toLowerCase().replace(/\s+/g, "")
+    );
+    if (!matchedColor) {
+      addToast(`❌ Color not found: ${color}`, "warning");
+      setBarcode("");
+      return;
+    }
+
+    const availableSizes = data.colors[matchedColor]?.sizes || {};
+    const matchedSize =
+      Object.keys(availableSizes).find((s) => s == size) || firstSize;
+
+    const stockQty = availableSizes[matchedSize]?.pcs || 0;
+    const newItem = {
+      code,
+      colors,
+      color: matchedColor,
+      size: matchedSize,
+      availableSizes: Object.keys(availableSizes),
+      qty: 1,
+      price: data.price || 0,
+      discountType: "%",
+      discountValue: 0,
+      stock: data.colors,
+      uiStock: stockQty - 1,
+      finalAmount: data.price || 0,
+    };
+
+    setItems((prev) => [...prev, newItem]);
     setBarcode("");
-    return;
-  }
-
-  const colors = Object.keys(data.colors || {});
-  const firstColor = colors[0] || "";
-  const sizesObj = data.colors?.[firstColor]?.sizes || {};
-  const firstSize = Object.keys(sizesObj)[0] || "";
-
-  if (!color) color = firstColor;
-  if (!size) size = firstSize;
-
-  const matchedColor = colors.find(
-    (c) =>
-      c.toLowerCase().replace(/\s+/g, "") ===
-      color.toLowerCase().replace(/\s+/g, "")
-  );
-  if (!matchedColor) {
-    addToast(`❌ Color not found: ${color}`, "warning");
-    setBarcode("");
-    return;
-  }
-
-  const availableSizes = data.colors[matchedColor]?.sizes || {};
-  const matchedSize =
-    Object.keys(availableSizes).find((s) => s == size) || firstSize;
-
-  const stockQty = availableSizes[matchedSize]?.pcs || 0;
-  const newItem = {
-    code,
-    colors,
-    color: matchedColor,
-    size: matchedSize,
-    availableSizes: Object.keys(availableSizes),
-    qty: 1,
-    price: data.price || 0,
-    discountType: "%",
-    discountValue: 0,
-    stock: data.colors,
-    uiStock: stockQty - 1,
-    finalAmount: data.price || 0,
+    inputRef.current?.focus();
   };
-
-  setItems((prev) => [...prev, newItem]);
-  setBarcode("");
-  inputRef.current?.focus();
-};
-
 
   // ===================== ITEM CHANGE =====================
   const handleChangeItem = (index, field, value) => {
@@ -965,7 +963,7 @@ if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
               <p>Delivery Charge: {deliveryCharge.toLocaleString()} Ks</p>
 
               {/* Final + Grand total */}
-              
+
               <p style={{ fontWeight: "bold", color: "#2563eb" }}>
                 Grand Total: {(finalTotal + deliveryCharge).toLocaleString()} Ks
               </p>
@@ -1052,79 +1050,49 @@ if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
                   </tbody>
                 </table>
               </div>
-              <div
-                style={{
-                  marginTop: 12,
-                  borderTop: "1px solid #eee",
-                  paddingTop: 8,
-                }}
-              >
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Total</div>
-                  <div>{total.toLocaleString()}</div>
-                </div>
+              {/* Replace with this new styled total row */}
+              {/* ✅ Total Row (Qty aligned under Qty column) */}
+<table
+  style={{
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: 13,
+    marginTop: 6,
+  }}
+>
+  <tbody>
+    <tr>
+      {/* Code */}
+      <td style={{ textAlign: "left" }}>
+        <strong>Total</strong>
+      </td>
 
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Discount</div>
-                  <div>{discount.toLocaleString()}</div>
-                </div>
+      {/* Color */}
+      <td></td>
 
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Member Discount</div>
-                  <div>
-                    {memberVerified ? memberDiscount.toLocaleString() : 0}
-                  </div>
-                </div>
+      {/* Size */}
+      <td></td>
 
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Coupon</div>
-                  <div>{couponAmount}</div>
-                </div>
+      {/* Qty column alignment */}
+      <td style={{ textAlign: "center" }}>
+        <span style={{ fontWeight: "600" }}>
+          {items.reduce((sum, i) => sum + i.qty, 0)} pcs
+        </span>
+      </td>
 
-                {/* ✅ Delivery Charge added here */}
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Delivery Charge</div>
-                  <div>{deliveryCharge.toLocaleString()}</div>
-                </div>
+      {/* Price */}
+      <td></td>
 
-                {/* ✅ Grand Total updated */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontWeight: 700,
-                  }}
-                >
-                  <div>Grand Total</div>
-                  <div>{(finalTotal + deliveryCharge).toLocaleString()}</div>
-                </div>
+      {/* Amount column alignment */}
+      <td style={{ textAlign: "right", fontWeight: "600" }}>
+        {total.toLocaleString()} Ks
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Payment</div>
-                  <div>{paymentMethod}</div>
-                </div>
 
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <div>Change</div>
-                  <div>{change.toLocaleString()}</div>
-                </div>
-              </div>
-
-              {/* PRINT PREVIEW FOOTER */}
+              
               {/* PRINT PREVIEW FOOTER */}
               <div
                 style={{
@@ -1158,56 +1126,55 @@ if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
 
       {/* PAYMENT DIALOG */}
       {showDialog && (
-  <div className="modal-overlay">
-    <div className="modal-box">
-      <h3>Payment</h3>
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h3>Payment</h3>
 
-      {/* ✅ Grand Total includes Delivery Charge */}
-      <div>
-        <label>Grand Amount</label>
-        <input
-          type="number"
-          value={finalTotal + deliveryCharge}
-          readOnly
-        />
-      </div>
+            {/* ✅ Grand Total includes Delivery Charge */}
+            <div>
+              <label>Grand Amount</label>
+              <input
+                type="number"
+                value={finalTotal + deliveryCharge}
+                readOnly
+              />
+            </div>
 
-      {/* ✅ Cash Paid */}
-      <div>
-        <label>Cash Paid</label>
-        <input
-          type="number"
-          value={cashPaid}
-          onChange={(e) => {
-            const val = e.target.value;
-            setCashPaid(val);
-            // ✅ subtract delivery charge also
-            setChange((Number(val) || 0) - (finalTotal + deliveryCharge));
-          }}
-        />
-      </div>
+            {/* ✅ Cash Paid */}
+            <div>
+              <label>Cash Paid</label>
+              <input
+                type="number"
+                value={cashPaid}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCashPaid(val);
+                  // ✅ subtract delivery charge also
+                  setChange((Number(val) || 0) - (finalTotal + deliveryCharge));
+                }}
+              />
+            </div>
 
-      {/* ✅ Change */}
-      <div>
-        <label>Change</label>
-        <input type="number" value={change} readOnly />
-      </div>
+            {/* ✅ Change */}
+            <div>
+              <label>Change</label>
+              <input type="number" value={change} readOnly />
+            </div>
 
-      {/* ✅ Buttons */}
-      <div className="modal-actions">
-        <button onClick={() => setShowDialog(false)}>Cancel</button>
-        <button
-          className="save-btn"
-          onClick={handleConfirmPrint} // This triggers Save & Print
-          disabled={submitting}
-        >
-          {submitting ? <span className="loader"></span> : "Save & Print"}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+            {/* ✅ Buttons */}
+            <div className="modal-actions">
+              <button onClick={() => setShowDialog(false)}>Cancel</button>
+              <button
+                className="save-btn"
+                onClick={handleConfirmPrint} // This triggers Save & Print
+                disabled={submitting}
+              >
+                {submitting ? <span className="loader"></span> : "Save & Print"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {submitting && (
         <div className="loading-overlay">
