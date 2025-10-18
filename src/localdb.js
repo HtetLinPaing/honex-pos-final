@@ -67,20 +67,26 @@ export async function getNextVoucherNo(shopId) {
     "STPF": "shop8",
   };
 
-  const realShopId = mapSharedToUser[shopId] || shopId;
+ const realShopId = mapSharedToUser[shopId] || shopId;
   const usersRef = ref(db, "users/" + realShopId);
   const snapshot = await get(usersRef);
   const shopData = snapshot.val();
   const prefix = shopData?.shortName?.toUpperCase() || "GEN";
 
-  const date = new Date();
-  const dateStr = `${date.getDate().toString().padStart(2, '0')}${(date.getMonth()+1).toString().padStart(2, '0')}${date.getFullYear()}`;
-  const lastNoSnapshot = await get(ref(db, `voucherCounters/${shopId}/${dateStr}`));
-  const lastNo = lastNoSnapshot.val() || 0;
+  // ✅ use one global counter instead of per-day counter
+  const counterRef = ref(db, `voucherCounters/${shopId}/lastNo`);
+  const counterSnap = await get(counterRef);
+  const lastNo = counterSnap.val() || 0;
   const nextNo = lastNo + 1;
-  await set(ref(db, `voucherCounters/${shopId}/${dateStr}`), nextNo);
+  await set(counterRef, nextNo);
 
-  return `${prefix}-${dateStr}-${nextNo.toString().padStart(4, '0')}`;
+  // ✅ date always from today, but counter keeps going
+  const date = new Date();
+  const dateStr = `${date.getDate().toString().padStart(2, "0")}${(date.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}${date.getFullYear()}`;
+
+  return `${prefix}-${dateStr}-${nextNo.toString().padStart(4, "0")}`;
 }
 
 
