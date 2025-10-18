@@ -249,23 +249,23 @@ function POSAppInner() {
   }, [currentShop]);
 
   // ===================== BARCODE =====================
-  const handleBarcodeChange = (val) => {
-    setBarcode(val);
+
+ // ✅ Auto detect barcode without pressing Enter
+useEffect(() => {
+  const detectBarcode = async () => {
+    const val = barcode.trim();
+    if (!val) return;
+
+    const products = await getProductsFromDB(currentShop.username);
+    // inventory မှာ code တူတာရှိရင်သာ auto scan
+    if (Object.keys(products || {}).some((key) => val.startsWith(key))) {
+      handleScan(val);
+    }
   };
 
-  // ✅ Press Enter → auto add item (manual or scanner)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Enter" && document.activeElement === inputRef.current) {
-        e.preventDefault();
-        const val = barcode.trim();
-        if (val) handleScan(val);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.rem;
-    oveEventListener("keydown", handleKeyDown);
-  }, [barcode]);
+  detectBarcode();
+}, [barcode]);
+
 
   const handleScan = async (rawCode) => {
     if (!rawCode) return;
@@ -275,14 +275,14 @@ function POSAppInner() {
     let code = "";
     let color = "";
     let size = "";
-    let data = null;
 
-    // ✅ Hangten Case: exp- or digit-only
+    // ✅ Support both Hangten & Prettyfit format
     if (/^(exp-)?[0-9-]+$/.test(input.toLowerCase())) {
-      const cleanInput = input.replace(/^exp-/i, ""); // remove exp- prefix
+      // --------------------
+      // 🟢 Hangten format (e.g. exp-10410-131-001-01)
+      // --------------------
+      const cleanInput = input.replace(/^exp-/i, "");
       const parts = cleanInput.split("-");
-
-      // ✅ support 4 parts (code + color + design + size)
       if (parts.length >= 4) {
         code = `${parts[0]}-${parts[1]}-${parts[2]}-${parts[3]}`;
       } else if (parts.length >= 3) {
@@ -291,20 +291,27 @@ function POSAppInner() {
         code = cleanInput;
       }
 
-      data = products?.[code];
-      if (!data) {
-        addToast(`❌ Hangten product not found: ${code}`, "warning");
+      const product = products?.[code];
+      if (!product) {
+        addToast(`❌ Product not found in inventory: ${code}`, "error");
         setBarcode("");
         return;
       }
 
-      const colors = Object.keys(data.colors || {});
-      const defaultColor = colors[0] || "Default";
-      const sizes = data.colors?.[defaultColor]?.sizes || {};
+      const colors = Object.keys(product.colors || {});
+      const defaultColor = colors[0] || "";
+      const sizes = product.colors?.[defaultColor]?.sizes || {};
       const availableSizes = Object.keys(sizes);
       const defaultSize = availableSizes[0] || "";
-      const stockQty = sizes[defaultSize]?.pcs || 0;
 
+      if (!defaultColor || !defaultSize) {
+        addToast(`❌ Product missing color/size data: ${code}`, "warning");
+        setBarcode("");
+        return;
+      }
+
+      // ✅ Build new item
+      const stockQty = sizes[defaultSize]?.pcs || 0;
       const newItem = {
         code,
         colors,
@@ -312,84 +319,81 @@ function POSAppInner() {
         size: defaultSize,
         availableSizes,
         qty: 1,
-        price: data.price || 0,
+        price: product.price || 0,
         discountType: "%",
         discountValue: 0,
-        stock: data.colors,
-        uiStock: stockQty - 1,
-        finalAmount: data.price || 0,
+        stock: product.colors,
+        uiStock: Math.max(0, stockQty - 1),
+        finalAmount: product.price || 0,
         note: "",
       };
+
       setItems((prev) => [...prev, newItem]);
       setBarcode("");
       inputRef.current?.focus();
       return;
     }
 
-    // ✅ Prettyfit format
-    const inputClean = input.trim();
-    const parts = inputClean.split(" ");
+    // --------------------
+    // 🟣 Prettyfit format (e.g. 10362-131-045-67 / CODE COLOR SIZE)
+    // --------------------
+    const parts = input.split(" ");
     if (parts.length >= 3) {
       code = parts[0];
       size = parts[parts.length - 1];
       color = parts.slice(1, -1).join(" ");
     } else {
-      const matchFull = inputClean.match(
-        /^([\w-]+)\s*([A-Za-z]+)\s*(\d{1,2})$/
-      );
-      if (matchFull) {
-        code = matchFull[1];
-        color = matchFull[2];
-        size = matchFull[3];
-      } else {
-        code = inputClean;
-      }
+      code = input;
     }
 
-    data = products?.[code];
-    if (!data) {
-      addToast(`❌ Product not found: ${code}`, "warning");
+    const product = products?.[code];
+    if (!product) {
+      addToast(`❌ Product not found in inventory: ${code}`, "error");
       setBarcode("");
       return;
     }
 
-    const colors = Object.keys(data.colors || {});
-    const firstColor = colors[0] || "";
-    const sizesObj = data.colors?.[firstColor]?.sizes || {};
-    const firstSize = Object.keys(sizesObj)[0] || "";
-
-    if (!color) color = firstColor;
-    if (!size) size = firstSize;
-
-    const matchedColor = colors.find(
-      (c) =>
-        c.toLowerCase().replace(/\s+/g, "") ===
-        color.toLowerCase().replace(/\s+/g, "")
-    );
-    if (!matchedColor) {
-      addToast(`❌ Color not found: ${color}`, "warning");
+    const colors = Object.keys(product.colors || {});
+    if (colors.length === 0) {
+      addToast(`❌ No color data for: ${code}`, "error");
       setBarcode("");
       return;
     }
 
-    const availableSizes = data.colors[matchedColor]?.sizes || {};
+    const matchedColor =
+      colors.find(
+        (c) =>
+          c.toLowerCase().replace(/\s+/g, "") ===
+          (color || "").toLowerCase().replace(/\s+/g, "")
+      ) || colors[0];
+
+    const sizesObj = product.colors?.[matchedColor]?.sizes || {};
+    if (Object.keys(sizesObj).length === 0) {
+      addToast(`❌ No sizes for color: ${matchedColor}`, "error");
+      setBarcode("");
+      return;
+    }
+
     const matchedSize =
-      Object.keys(availableSizes).find((s) => s == size) || firstSize;
+      Object.keys(sizesObj).find((s) => s === size) || Object.keys(sizesObj)[0];
 
-    const stockQty = availableSizes[matchedSize]?.pcs || 0;
+    const stockQty = sizesObj[matchedSize]?.pcs || 0;
+
+    // ✅ Only add item if product exists and has stock record
     const newItem = {
       code,
       colors,
       color: matchedColor,
       size: matchedSize,
-      availableSizes: Object.keys(availableSizes),
+      availableSizes: Object.keys(sizesObj),
       qty: 1,
-      price: data.price || 0,
+      price: product.price || 0,
       discountType: "%",
       discountValue: 0,
-      stock: data.colors,
-      uiStock: stockQty - 1,
-      finalAmount: data.price || 0,
+      stock: product.colors,
+      uiStock: Math.max(0, stockQty - 1),
+      finalAmount: product.price || 0,
+      note: "",
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -675,7 +679,7 @@ function POSAppInner() {
               <input
                 ref={inputRef}
                 value={barcode}
-                onChange={(e) => handleBarcodeChange(e.target.value)}
+                onChange={(e) => setBarcode(e.target.value)}
                 placeholder="Scan or Enter Barcode"
               />
             </div>
@@ -1050,49 +1054,100 @@ function POSAppInner() {
                   </tbody>
                 </table>
               </div>
-              {/* Replace with this new styled total row */}
-              {/* ✅ Total Row (Qty aligned under Qty column) */}
-<table
-  style={{
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: 13,
-    marginTop: 6,
-  }}
->
-  <tbody>
-    <tr>
-      {/* Code */}
-      <td style={{ textAlign: "left" }}>
-        <strong>Total</strong>
-      </td>
+              <div
+                style={{
+                  marginTop: 12,
+                  borderTop: "1px solid #eee",
+                  paddingTop: 8,
+                }}
+              >
+                {/* ✅ Replace this part */}
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 13,
+                    marginTop: 6,
+                  }}
+                >
+                  <tbody>
+                    <tr>
+                      <td style={{ textAlign: "left" }}>
+                        <strong>Total</strong>
+                      </td>
+                      <td></td>
+                      <td></td>
+                      <td style={{ textAlign: "center" }}>
+                        <span style={{ fontWeight: "600" }}>
+                          {items.reduce((sum, i) => sum + i.qty, 0)} pcs
+                        </span>
+                      </td>
+                      <td></td>
+                      <td style={{ textAlign: "right", fontWeight: "600" }}>
+                        {total.toLocaleString()} Ks
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
 
-      {/* Color */}
-      <td></td>
+                {/* ✅ Below part keep the same */}
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Discount</div>
+                  <div>{discount.toLocaleString()}</div>
+                </div>
 
-      {/* Size */}
-      <td></td>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Member Discount</div>
+                  <div>
+                    {memberVerified ? memberDiscount.toLocaleString() : 0}
+                  </div>
+                </div>
 
-      {/* Qty column alignment */}
-      <td style={{ textAlign: "center" }}>
-        <span style={{ fontWeight: "600" }}>
-          {items.reduce((sum, i) => sum + i.qty, 0)} pcs
-        </span>
-      </td>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Coupon</div>
+                  <div>{couponAmount}</div>
+                </div>
 
-      {/* Price */}
-      <td></td>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Delivery Charge</div>
+                  <div>{deliveryCharge.toLocaleString()}</div>
+                </div>
 
-      {/* Amount column alignment */}
-      <td style={{ textAlign: "right", fontWeight: "600" }}>
-        {total.toLocaleString()} Ks
-      </td>
-    </tr>
-  </tbody>
-</table>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontWeight: 700,
+                  }}
+                >
+                  <div>Grand Total</div>
+                  <div>{(finalTotal + deliveryCharge).toLocaleString()}</div>
+                </div>
 
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Payment</div>
+                  <div>{paymentMethod}</div>
+                </div>
 
-              
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <div>Change</div>
+                  <div>{change.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* PRINT PREVIEW FOOTER */}
               {/* PRINT PREVIEW FOOTER */}
               <div
                 style={{
