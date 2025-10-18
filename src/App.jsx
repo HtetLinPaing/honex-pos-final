@@ -885,6 +885,7 @@ useEffect(() => {
                 <option>Wave</option>
                 <option>Visa</option>
                 <option>MMQR</option>
+                <option>COD</option>
               </select>
             </div>
             <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
